@@ -25,7 +25,9 @@ export default function Dashboard() {
     setAttendanceHistory,
     addNotification,
     checkInTime,
-    setCheckInTime
+    setCheckInTime,
+    apiCall,
+    syncFromBackend
   } = useApp();
 
   const [time, setTime] = useState(new Date());
@@ -68,7 +70,7 @@ export default function Dashboard() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handlePunch = () => {
+  const handlePunch = async () => {
     // 1. Check IP and Geofencing coordinates prior to executing API
     if (!officeWifi) {
       showToast('Sai địa chỉ IP mạng văn phòng! Bạn cần kết nối đúng WiFi công ty.', 'error');
@@ -76,7 +78,7 @@ export default function Dashboard() {
       return;
     }
 
-    if (!gpsWithinRange) {
+    if (!gpsWithinRange && !currentShift.toLowerCase().includes('online')) {
       showToast('Bạn đang ở ngoài phạm vi công ty! Khoảng cách GPS thực tế > 100m.', 'error');
       pushLog(`Chấm công thất bại: Tọa độ thiết bị nằm ngoài geofence (>100m).`, 'error');
       return;
@@ -85,33 +87,24 @@ export default function Dashboard() {
     // Debounce/Throttle constraint: immediate lock & loading spin
     setPunchLoading(true);
     const punchType = isCheckedIn ? 'Check-out' : 'Check-in';
-    pushLog(`Bắt đầu xử lý gửi yêu cầu ${punchType} lên Firebase...`);
+    pushLog(`Bắt đầu xử lý gửi yêu cầu ${punchType} lên Backend...`);
 
-    setTimeout(() => {
-      setPunchLoading(false);
-      
+    try {
       if (!isCheckedIn) {
-        // Handle Check-in Success
+        // Call backend check-in
+        const res = await apiCall('/attendance/check-in', 'POST', {
+          lat: gpsWithinRange ? 21.028511 : 21.05,
+          lng: gpsWithinRange ? 105.854167 : 105.9,
+          wifiIp: officeWifi ? '127.0.0.1' : '192.168.9.9',
+          shiftName: currentShift,
+          checkInTimeStr: time.toISOString()
+        });
+
         setIsCheckedIn(true);
-        const actualCheckInDate = new Date(time);
-        setCheckInTime(actualCheckInDate); // Store actual check-in timestamp
-        
+        setCheckInTime(new Date(time));
         pushLog(`Chấm công vào (Check-in) thành công ca: ${currentShift}. Trạng thái WiFi: OK, GPS: OK.`, 'success');
         showToast('Check-in thành công!', 'success');
         addNotification('Chấm công thành công', `${currentUser.fullName} đã Check-in ca: ${currentShift}`, 'success');
-        
-        // Append active check-in log row directly to History list
-        const clockInStr = actualCheckInDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const newActiveLog = {
-          id: Date.now(),
-          date: actualCheckInDate.toISOString().split('T')[0],
-          shift: currentShift,
-          clockIn: clockInStr,
-          clockOut: '-',
-          actualHours: 0,
-          status: 'Đang làm việc'
-        };
-        setAttendanceHistory(prev => [newActiveLog, ...prev]);
 
         // Micro animation
         confetti({
@@ -120,56 +113,25 @@ export default function Dashboard() {
           origin: { y: 0.6 }
         });
       } else {
-        // Handle Check-out Success
+        // Call backend check-out
+        await apiCall('/attendance/check-out', 'POST', {
+          checkOutTimeStr: time.toISOString()
+        });
+
         setIsCheckedIn(false);
+        setCheckInTime(null);
         pushLog(`Chấm công ra (Check-out) thành công ca: ${currentShift}.`, 'success');
         showToast('Check-out thành công!', 'success');
         addNotification('Chấm công thành công', `${currentUser.fullName} đã Check-out ca: ${currentShift}`, 'success');
-        
-        // Log history insert simulation using actual check-in time
-        const checkInDateObj = checkInTime ? new Date(checkInTime) : new Date(time.getTime() - 4 * 60 * 60 * 1000);
-        const clockInStr = checkInDateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const clockOutStr = time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        
-        // Calculate difference in hours
-        const diffMs = Math.abs(time - checkInDateObj);
-        const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(1);
-        
-        setAttendanceHistory(prev => {
-          const todayStr = time.toISOString().split('T')[0];
-          // Locate today's active check-in row
-          const activeIndex = prev.findIndex(log => log.date === todayStr && log.shift === currentShift && log.status === 'Đang làm việc');
-          if (activeIndex !== -1) {
-            return prev.map((log, idx) => {
-              if (idx === activeIndex) {
-                return {
-                  ...log,
-                  clockIn: clockInStr,
-                  clockOut: clockOutStr,
-                  actualHours: parseFloat(diffHours),
-                  status: 'Hợp lệ'
-                };
-              }
-              return log;
-            });
-          } else {
-            // Fallback in case active log was not found
-            const newLog = {
-              id: Date.now(),
-              date: todayStr,
-              shift: currentShift,
-              clockIn: clockInStr,
-              clockOut: clockOutStr,
-              actualHours: parseFloat(diffHours),
-              status: 'Hợp lệ'
-            };
-            return [newLog, ...prev];
-          }
-        });
-        
-        setCheckInTime(null); // Clear state
       }
-    }, 1000); // 1s mock API latency
+
+      await syncFromBackend();
+    } catch (err) {
+      showToast(err.message, 'error');
+      pushLog(`Lỗi chấm công: ${err.message}`, 'error');
+    } finally {
+      setPunchLoading(false);
+    }
   };
 
   // Determine if it is overtime based on simulated hours

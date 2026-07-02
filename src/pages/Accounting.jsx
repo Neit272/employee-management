@@ -11,7 +11,9 @@ export default function Accounting() {
     allUsers, 
     attendanceHistory, 
     pushLog, 
-    showDialog 
+    showDialog,
+    apiCall,
+    syncFromBackend
   } = useApp();
 
   // Month/Year filter for attendance summary
@@ -50,7 +52,7 @@ export default function Accounting() {
   const [corePassword, setCorePassword] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [simulatedOtp, setSimulatedOtp] = useState('');
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(300); // 5 mins
   const [timerActive, setTimerActive] = useState(false);
   const [securityError, setSecurityError] = useState('');
 
@@ -94,26 +96,41 @@ export default function Accounting() {
     pushLog(`Đã chuẩn bị tải lên tệp tin: ${file.name}`);
   };
 
-  const submitUpload = (e) => {
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const submitUpload = async (e) => {
     e.preventDefault();
     if (!uploadedFile) return;
 
     pushLog(`Đang gửi tài liệu lên hệ thống chứng từ kế toán...`);
 
-    setTimeout(() => {
-      const newDoc = {
-        id: Date.now(),
+    try {
+      const base64Str = await fileToBase64(uploadedFile);
+
+      await apiCall('/documents/upload', 'POST', {
         name: uploadedFile.name,
         employeeId: currentUser.employeeId,
-        uploadDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        type: docCategory
-      };
+        category: docCategory,
+        isCore: docCategory.includes('Báo cáo tài chính') || docCategory.includes('Hợp đồng'),
+        fileBase64: base64Str
+      });
 
-      setDocuments(prev => [newDoc, ...prev]);
       setUploadedFile(null);
-      pushLog(`Tải lên tài liệu ${newDoc.name} thành công. Loại: ${docCategory}`, 'success');
+      pushLog(`Tải lên tài liệu thành công. Loại: ${docCategory}`, 'success');
       confetti({ particleCount: 50, spread: 40 });
-    }, 800);
+      
+      await syncFromBackend();
+    } catch (err) {
+      setUploadError(err.message);
+      pushLog(`Lỗi tải lên tài liệu: ${err.message}`, 'error');
+    }
   };
 
   // 2FA Flow Executions
@@ -123,30 +140,32 @@ export default function Accounting() {
     setSecurityError('');
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setSecurityError('');
 
-    // Secure Pass Core validation (preset to 'core123' or 'admin')
-    if (corePassword === 'core123' || corePassword === 'admin') {
-      pushLog('Xác thực lớp 1 (Pass Core) thành công.', 'success');
+    try {
+      pushLog(`Đang gửi yêu cầu Pass Core xác thực lớp 1...`);
+      // Trigger OTP request for default core document (ID 1)
+      await apiCall('/documents/1/otp-request', 'POST', { passCore: corePassword });
       
-      // Generate simulated 6-digit OTP code
-      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setSimulatedOtp(generatedOtp);
-      setCountdown(30);
+      pushLog('Xác thực lớp 1 (Pass Core) thành công.', 'success');
+      setCountdown(300);
       setTimerActive(true);
       setIs2FAPhase('otp');
       setOtpInput('');
-
-      pushLog(`Hệ thống gửi mã OTP 2FA về email. Mã bảo mật là: ${generatedOtp} (Hiệu lực: 30s)`, 'success');
-    } else {
-      setSecurityError('Mật khẩu bảo mật phân hệ (Pass Core) không chính xác.');
-      pushLog('Xác thực lớp 1 thất bại: Sai Pass Core.', 'error');
+      
+      // Provide dummy visual indicator of OTP code for mock testing ease
+      const visualOtp = '123456'; 
+      setSimulatedOtp(visualOtp);
+      pushLog(`Mã OTP đã được gửi về email. Nhập mã OTP từ email phòng Kế toán để tải file.`, 'success');
+    } catch (err) {
+      setSecurityError(err.message);
+      pushLog(`Xác thực lớp 1 thất bại: ${err.message}`, 'error');
     }
   };
 
-  const handleOtpSubmit = (e) => {
+  const handleOtpSubmit = async (e) => {
     e.preventDefault();
     setSecurityError('');
 
@@ -155,24 +174,45 @@ export default function Accounting() {
       return;
     }
 
-    if (otpInput === simulatedOtp) {
+    try {
+      pushLog('Đang xác nhận mã OTP lớp thứ 2...');
+      const res = await apiCall('/documents/1/download', 'POST', { otp: otpInput });
+      
       pushLog('Xác thực lớp 2 (OTP 6 số) thành công. Mở khóa thư mục Hợp đồng Core.', 'success');
       setIs2FAPhase('verified');
       confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-    } else {
-      setSecurityError('Mã xác thực OTP không chính xác.');
-      pushLog('Xác thực lớp 2 thất bại: Sai mã OTP.', 'error');
+
+      // Automatically trigger secure document stream download or Base64 download
+      if (res.downloadUrl.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = res.downloadUrl;
+        link.download = 'HopDong_Core.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        const base = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5000'
+          : '';
+        window.open(`${base}${res.downloadUrl}`, '_blank');
+      }
+    } catch (err) {
+      setSecurityError(err.message);
+      pushLog(`Xác thực lớp 2 thất bại: ${err.message}`, 'error');
     }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     setSecurityError('');
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setSimulatedOtp(generatedOtp);
-    setCountdown(30);
-    setTimerActive(true);
-    setOtpInput('');
-    pushLog(`Hệ thống gửi lại mã OTP 2FA mới về email. Mã bảo mật mới là: ${generatedOtp} (Hiệu lực: 30s)`, 'success');
+    try {
+      await apiCall('/documents/1/otp-request', 'POST', { passCore: corePassword });
+      setCountdown(300);
+      setTimerActive(true);
+      setOtpInput('');
+      pushLog(`Hệ thống đã gửi lại mã OTP 2FA mới về email phòng Kế toán.`, 'success');
+    } catch (err) {
+      setSecurityError(err.message);
+    }
   };
 
   // Core folders sensitive contracts mock list

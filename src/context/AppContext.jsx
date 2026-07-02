@@ -358,6 +358,13 @@ export const AppProvider = ({ children }) => {
     });
   };
 
+  const getApiUrl = (endpoint) => {
+    const base = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:5000/api'
+      : '/api';
+    return `${base}${endpoint}`;
+  };
+
   // Push custom log simulating Firebase logger
   const pushLog = (message, type = 'info') => {
     const timeStr = new Date().toLocaleTimeString('vi-VN');
@@ -366,7 +373,123 @@ export const AppProvider = ({ children }) => {
       { id: Date.now() + Math.random(), text: `[${timeStr}] ${logTypeSymbol} ${message}` },
       ...prev
     ]);
+    
+    // Sync to backend if server is active
+    fetch(getApiUrl('/admin/logs'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentUser.employeeId}`
+      },
+      body: JSON.stringify({ text: `[${timeStr}] ${logTypeSymbol} ${message}` })
+    }).catch(() => {});
   };
+
+  // Helper for all backend requests
+  const apiCall = async (endpoint, method = 'GET', body = null, isMultipart = false) => {
+    const headers = {
+      'Authorization': `Bearer ${currentUser.employeeId}`
+    };
+    if (!isMultipart) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const config = {
+      method,
+      headers
+    };
+
+    if (body) {
+      config.body = isMultipart ? body : JSON.stringify(body);
+    }
+
+    const res = await fetch(getApiUrl(endpoint), config);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Lỗi HTTP ${res.status}`);
+    }
+    return res.json();
+  };
+
+  // Sync data from backend
+  const syncFromBackend = async () => {
+    try {
+      // 1. Get current history for the last 30 days
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
+      const toDate = today.toISOString().split('T')[0];
+
+      const historyData = await apiCall(`/attendance/history?fromDate=${fromDate}&toDate=${toDate}`);
+      if (historyData.history) {
+        updateAttendanceHistory(historyData.history);
+        
+        // Sync check-in state
+        const todayStr = today.toISOString().split('T')[0];
+        const todayRecord = historyData.history.find(h => h.date === todayStr);
+        if (todayRecord) {
+          setIsCheckedIn(todayRecord.clockOut === '-');
+          setCurrentShift(todayRecord.shift);
+          if (todayRecord.clockIn !== '-') {
+            const [h, m, s] = todayRecord.clockIn.split(':').map(Number);
+            const inDate = new Date();
+            inDate.setHours(h, m, s);
+            setCheckInTime(inDate);
+          }
+        }
+      }
+
+      // 2. Get Requests
+      const reqData = await apiCall('/requests');
+      if (reqData.requests) {
+        updateRequests(reqData.requests);
+      }
+
+      // 3. If KeToan or Admin, fetch Documents
+      if (currentUser.role === 'KeToan' || currentUser.role === 'Admin') {
+        const docData = await apiCall('/documents');
+        if (docData.documents) {
+          setDocuments(docData.documents);
+        }
+      }
+
+      // 4. If Admin, fetch Users & Entities
+      if (currentUser.role === 'Admin') {
+        const usersData = await apiCall('/admin/users');
+        if (usersData.users) {
+          updateAllUsers(usersData.users);
+        }
+
+        const entitiesData = await apiCall('/admin/entities');
+        if (entitiesData.departments) {
+          setDepartments(entitiesData.departments);
+        }
+        if (entitiesData.positions) {
+          setPositions(entitiesData.positions);
+        }
+      }
+      
+      // Fetch backend logs
+      const logData = await fetch(getApiUrl('/admin/logs'), {
+        headers: { 'Authorization': `Bearer ${currentUser.employeeId}` }
+      }).then(r => r.json()).catch(() => ({}));
+      
+      if (logData.logs) {
+        setFirebaseLogs(logData.logs);
+      }
+
+    } catch (error) {
+      console.warn('⚠️ Lỗi đồng bộ Backend, đang chạy chế độ Mock Offline:', error.message);
+    }
+  };
+
+  // Sync whenever active user changes
+  useEffect(() => {
+    if (currentUser) {
+      syncFromBackend();
+    }
+  }, [currentUser]);
 
   // Trigger a real-time notification
   const addNotification = (title, description, type = 'info') => {
@@ -493,7 +616,9 @@ export const AppProvider = ({ children }) => {
         addNotification,
         modalDialog,
         showDialog,
-        closeDialog
+        closeDialog,
+        apiCall,
+        syncFromBackend
       }}
     >
       {children}
@@ -502,3 +627,4 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useApp = () => useContext(AppContext);
+

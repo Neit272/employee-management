@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Settings, Folder, FileCheck, FileX, Download, Plus, Trash2, Edit2, AlertCircle, UserPlus } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -19,7 +19,9 @@ export default function Admin() {
     setAttendanceHistory,
     pushLog,
     addNotification,
-    showDialog
+    showDialog,
+    apiCall,
+    syncFromBackend
   } = useApp();
 
   // User Account Management States
@@ -67,77 +69,75 @@ export default function Admin() {
     setIsAccountModalOpen(true);
   };
 
-  const handleSaveAccount = (e) => {
+  const handleSaveAccount = async (e) => {
     e.preventDefault();
     if (!accountForm.fullName.trim() || !accountForm.email.trim() || !accountForm.employeeId.trim()) {
-      showDialog({ title: 'Lá»—i nháº­p liá»‡u', message: 'Vui lÃ²ng Ä‘iá»n Ä‘áº§y Ä‘á»§ thÃ´ng tin báº¯t buá»™c.', type: 'warning' });
+      showDialog({ title: 'Lỗi nhập liệu', message: 'Vui lòng điền đầy đủ thông tin bắt buộc.', type: 'warning' });
       return;
     }
 
-    if (editingAccount) {
-      // Editing existing
-      setAllUsers(prev => prev.map(u => {
-        if (u.employeeId === editingAccount.employeeId) {
-          return {
-            ...u,
-            fullName: accountForm.fullName.trim(),
-            email: accountForm.email.trim(),
-            role: accountForm.role,
-            department: accountForm.department,
-            position: accountForm.position
-          };
-        }
-        return u;
-      }));
-      pushLog(`Admin cáº­p nháº­t tÃ i khoáº£n: ${accountForm.fullName} (${accountForm.employeeId})`, 'success');
-      showDialog({ title: 'ThÃ nh cÃ´ng', message: `ÄÃ£ cáº­p nháº­t tÃ i khoáº£n ${accountForm.fullName} thÃ nh cÃ´ng.`, type: 'success' });
-    } else {
-      // Adding new
-      if (allUsers.some(u => u.employeeId === accountForm.employeeId)) {
-        showDialog({ title: 'TrÃ¹ng mÃ£ nhÃ¢n viÃªn', message: 'MÃ£ nhÃ¢n viÃªn nÃ y Ä‘Ã£ tá»“n táº¡i trong há»‡ thá»‘ng.', type: 'error' });
-        return;
-      }
-      const newAcc = {
-        fullName: accountForm.fullName.trim(),
-        email: accountForm.email.trim(),
-        role: accountForm.role,
-        employeeId: accountForm.employeeId.trim(),
-        cccd: '',
-        phone: '',
-        address: '',
-        startDate: new Date().toISOString().slice(0, 10),
-        department: accountForm.department,
-        position: accountForm.position,
-        gender: '',
-        dob: '',
-        isProfileComplete: false
-      };
-      setAllUsers(prev => [...prev, newAcc]);
-      pushLog(`Admin táº¡o má»›i tÃ i khoáº£n: ${newAcc.fullName} (${newAcc.employeeId})`, 'success');
-      showDialog({ title: 'ThÃ nh cÃ´ng', message: `ÄÃ£ táº¡o tÃ i khoáº£n ${newAcc.fullName} thÃ nh cÃ´ng. NhÃ¢n sá»± cáº§n hoÃ n thiá»‡n thÃ´ng tin khi Ä‘Äƒng nháº­p.`, type: 'success' });
-    }
+    try {
+      if (editingAccount) {
+        // Editing existing
+        await apiCall(`/admin/users/${editingAccount.employeeId}`, 'PUT', {
+          fullName: accountForm.fullName.trim(),
+          email: accountForm.email.trim(),
+          role: accountForm.role,
+          department: accountForm.department,
+          position: accountForm.position
+        });
+        pushLog(`Admin cập nhật tài khoản: ${accountForm.fullName} (${accountForm.employeeId})`, 'success');
+        showDialog({ title: 'Thành công', message: `Đã cập nhật tài khoản ${accountForm.fullName} thành công.`, type: 'success' });
+      } else {
+        // Adding new - register auth account
+        await apiCall('/auth/register', 'POST', {
+          fullName: accountForm.fullName.trim(),
+          email: accountForm.email.trim(),
+          password: 'password123',
+          confirmPassword: 'password123'
+        });
 
-    setIsAccountModalOpen(false);
+        // Set roles and department details
+        await apiCall(`/admin/users/${accountForm.employeeId.trim()}`, 'PUT', {
+          role: accountForm.role,
+          department: accountForm.department,
+          position: accountForm.position
+        });
+
+        pushLog(`Admin tạo mới tài khoản: ${accountForm.fullName} (${accountForm.employeeId})`, 'success');
+        showDialog({ title: 'Thành công', message: `Đã tạo tài khoản ${accountForm.fullName} thành công. Nhân sự cần hoàn thiện thông tin khi đăng nhập.`, type: 'success' });
+      }
+
+      setIsAccountModalOpen(false);
+      await syncFromBackend();
+    } catch (err) {
+      showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+    }
   };
 
   const handleDeleteAccount = (user) => {
     if (user.employeeId === currentUser.employeeId) {
       showDialog({
-        title: 'Báº£o máº­t cháº·n',
-        message: 'Lá»—i an toÃ n: Báº¡n khÃ´ng thá»ƒ tá»± xÃ³a tÃ i khoáº£n Admin Ä‘ang Ä‘Äƒng nháº­p cá»§a chÃ­nh mÃ¬nh!',
+        title: 'Bảo mật chặn',
+        message: 'Lỗi an toàn: Bạn không thể tự khóa tài khoản Admin đang đăng nhập của chính mình!',
         type: 'error'
       });
       return;
     }
 
     showDialog({
-      title: 'XÃ¡c nháº­n xÃ³a tÃ i khoáº£n',
-      message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a tÃ i khoáº£n "${user.fullName}" (${user.employeeId}) khá»i há»‡ thá»‘ng? Dá»¯ liá»‡u tÃ i khoáº£n sáº½ máº¥t vÄ©nh viá»…n.`,
+      title: 'Xác nhận khóa tài khoản',
+      message: `Bạn có chắc chắn muốn khóa tài khoản "${user.fullName}" (${user.employeeId}) khỏi hệ thống?`,
       type: 'confirm',
-      onConfirm: () => {
-        setAllUsers(prev => prev.filter(u => u.employeeId !== user.employeeId));
-        pushLog(`Admin xÃ³a tÃ i khoáº£n nhÃ¢n viÃªn: ${user.fullName} (${user.employeeId})`, 'error');
-        showDialog({ title: 'ÄÃ£ xÃ³a', message: `TÃ i khoáº£n ${user.fullName} Ä‘Ã£ bá»‹ loáº¡i bá» khá»i há»‡ thá»‘ng.`, type: 'success' });
+      onConfirm: async () => {
+        try {
+          await apiCall(`/admin/users/${user.employeeId}`, 'PUT', { isBlocked: true });
+          pushLog(`Admin khóa tài khoản nhân viên: ${user.fullName} (${user.employeeId})`, 'error');
+          showDialog({ title: 'Đã khóa', message: `Tài khoản ${user.fullName} đã bị khóa.`, type: 'success' });
+          await syncFromBackend();
+        } catch (err) {
+          showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+        }
       }
     });
   };
@@ -155,7 +155,7 @@ export default function Admin() {
     setEditStatus(log.status);
   };
 
-  const handleSaveEditedLog = (e) => {
+  const handleSaveEditedLog = async (e) => {
     e.preventDefault();
     if (!editingLog) return;
 
@@ -169,29 +169,31 @@ export default function Admin() {
       hoursVal = parseFloat(Math.max(0, (outH * 60 + outM - (inH * 60 + inM)) / 60).toFixed(1));
     }
 
-    setAttendanceHistory(prev => prev.map(log => {
-      if (log.id === editingLog.id) {
-        return {
-          ...log,
-          clockIn: clockInVal,
-          clockOut: clockOutVal,
-          actualHours: hoursVal,
-          status: editStatus
-        };
-      }
-      return log;
-    }));
+    try {
+      await apiCall('/admin/manual-override', 'POST', {
+        employeeId: editingLog.employeeId,
+        date: editingLog.date,
+        clockIn: clockInVal,
+        clockOut: clockOutVal,
+        actualHours: hoursVal,
+        status: editStatus,
+        shift: editingLog.shift
+      });
 
-    const empName = allUsers.find(u => u.employeeId === editingLog.employeeId)?.fullName || editingLog.employeeId;
-    pushLog(`Admin sá»­a thá»§ cÃ´ng cháº¥m cÃ´ng nhÃ¢n sá»± ${empName} ngÃ y ${editingLog.date} thÃ nh [In: ${clockInVal}, Out: ${clockOutVal}, TT: ${editStatus}]`, 'success');
-    
-    showDialog({
-      title: 'ÄÃ£ cáº­p nháº­t giá» cÃ´ng',
-      message: `ÄÃ£ cáº­p nháº­t lá»‹ch sá»­ cháº¥m cÃ´ng ngÃ y ${editingLog.date} cho nhÃ¢n sá»± thÃ nh cÃ´ng.`,
-      type: 'success'
-    });
+      const empName = allUsers.find(u => u.employeeId === editingLog.employeeId)?.fullName || editingLog.employeeId;
+      pushLog(`Admin sửa thủ công chấm công nhân sự ${empName} ngày ${editingLog.date} thành [In: ${clockInVal}, Out: ${clockOutVal}, TT: ${editStatus}]`, 'success');
+      
+      showDialog({
+        title: 'Đã cập nhật giờ công',
+        message: `Đã cập nhật lịch sử chấm công ngày ${editingLog.date} cho nhân sự thành công.`,
+        type: 'success'
+      });
 
-    setEditingLog(null);
+      setEditingLog(null);
+      await syncFromBackend();
+    } catch (err) {
+      showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+    }
   };
 
   // Dynamic CRUD state
@@ -221,20 +223,25 @@ export default function Admin() {
   const [accountSearch, setAccountSearch] = useState('');
 
   // 1. Dynamic CRUD executions (No hardcoded references)
-  const handleAddDept = (e) => {
+  const handleAddDept = async (e) => {
     e.preventDefault();
     if (!newDept.trim()) return;
     if (departments.includes(newDept.trim())) {
       showDialog({
-        title: 'TrÃ¹ng láº·p tÃªn',
-        message: 'TÃªn phÃ²ng ban nÃ y Ä‘Ã£ tá»“n táº¡i trong há»‡ thá»‘ng.',
+        title: 'Trùng lặp tên',
+        message: 'Tên phòng ban này đã tồn tại trong hệ thống.',
         type: 'warning'
       });
       return;
     }
-    setDepartments(prev => [...prev, newDept.trim()]);
-    pushLog(`Admin táº¡o phÃ²ng ban má»›i: ${newDept.trim()}`, 'success');
-    setNewDept('');
+    try {
+      await apiCall('/admin/departments', 'POST', { action: 'create', name: newDept.trim() });
+      pushLog(`Admin tạo phòng ban mới: ${newDept.trim()}`, 'success');
+      setNewDept('');
+      await syncFromBackend();
+    } catch (err) {
+      showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+    }
   };
 
   const handleDeleteDept = (deptName) => {
@@ -242,39 +249,49 @@ export default function Admin() {
     const isDeptOccupied = allUsers.some(u => u.department === deptName);
     if (isDeptOccupied) {
       showDialog({
-        title: 'KhÃ´ng thá»ƒ xoÃ¡ phÃ²ng ban',
-        message: `KhÃ´ng thá»ƒ xoÃ¡ phÃ²ng ban "${deptName}" vÃ¬ Ä‘ang cÃ³ nhÃ¢n sá»± thuá»™c phÃ²ng ban nÃ y. Vui lÃ²ng Ä‘iá»u chuyá»ƒn cÃ¡c nhÃ¢n sá»± sang phÃ²ng ban khÃ¡c trÆ°á»›c!`,
+        title: 'Không thể xoá phòng ban',
+        message: `Không thể xoá phòng ban "${deptName}" vì đang có nhân sự thuộc phòng ban này. Vui lòng điều chuyển các nhân sự sang phòng ban khác trước!`,
         type: 'error'
       });
-      pushLog(`XoÃ¡ phÃ²ng ban bá»‹ tá»« chá»‘i: PhÃ²ng "${deptName}" váº«n cÃ²n nhÃ¢n sá»± hoáº¡t Ä‘á»™ng.`, 'error');
+      pushLog(`Xoá phòng ban bị từ chối: Phòng "${deptName}" vẫn còn nhân sự hoạt động.`, 'error');
       return;
     }
 
     showDialog({
-      title: 'XÃ¡c nháº­n xoÃ¡',
-      message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xoÃ¡ phÃ²ng ban: "${deptName}"? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.`,
+      title: 'Xác nhận xoá',
+      message: `Bạn có chắc chắn muốn xoá phòng ban: "${deptName}"? Hành động này không thể hoàn tác.`,
       type: 'confirm',
-      onConfirm: () => {
-        setDepartments(prev => prev.filter(d => d !== deptName));
-        pushLog(`Admin xoÃ¡ phÃ²ng ban: ${deptName}`, 'error');
+      onConfirm: async () => {
+        try {
+          await apiCall('/admin/departments', 'POST', { action: 'delete', name: deptName });
+          pushLog(`Admin xoá phòng ban: ${deptName}`, 'error');
+          await syncFromBackend();
+        } catch (err) {
+          showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+        }
       }
     });
   };
 
-  const handleAddPos = (e) => {
+  const handleAddPos = async (e) => {
     e.preventDefault();
     if (!newPos.trim()) return;
     if (positions.includes(newPos.trim())) {
       showDialog({
-        title: 'TrÃ¹ng láº·p tÃªn',
-        message: 'TÃªn chá»©c vá»¥ nÃ y Ä‘Ã£ tá»“n táº¡i trong há»‡ thá»‘ng.',
+        title: 'Trùng lặp tên',
+        message: 'Tên chức vụ này đã tồn tại trong hệ thống.',
         type: 'warning'
       });
       return;
     }
-    setPositions(prev => [...prev, newPos.trim()]);
-    pushLog(`Admin táº¡o chá»©c vá»¥ má»›i: ${newPos.trim()}`, 'success');
-    setNewPos('');
+    try {
+      await apiCall('/admin/positions', 'POST', { action: 'create', name: newPos.trim() });
+      pushLog(`Admin tạo chức vụ mới: ${newPos.trim()}`, 'success');
+      setNewPos('');
+      await syncFromBackend();
+    } catch (err) {
+      showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+    }
   };
 
   const handleDeletePos = (posName) => {
@@ -282,113 +299,44 @@ export default function Admin() {
     const isPosOccupied = allUsers.some(u => u.position === posName);
     if (isPosOccupied) {
       showDialog({
-        title: 'KhÃ´ng thá»ƒ xoÃ¡ chá»©c vá»¥',
-        message: `KhÃ´ng thá»ƒ xoÃ¡ chá»©c vá»¥ "${posName}" vÃ¬ Ä‘ang cÃ³ nhÃ¢n sá»± giá»¯ chá»©c vá»¥ nÃ y. Vui lÃ²ng Ä‘iá»u chuyá»ƒn cÃ¡c nhÃ¢n sá»± sang chá»©c vá»¥ khÃ¡c trÆ°á»›c!`,
+        title: 'Không thể xoá chức vụ',
+        message: `Không thể xoá chức vụ "${posName}" vì đang có nhân sự giữ chức vụ này. Vui lòng điều chuyển các nhân sự sang chức vụ khác trước!`,
         type: 'error'
       });
-      pushLog(`XoÃ¡ chá»©c vá»¥ bá»‹ tá»« chá»‘i: Chá»©c vá»¥ "${posName}" váº«n cÃ²n nhÃ¢n sá»± hoáº¡t Ä‘á»™ng.`, 'error');
+      pushLog(`Xoá chức vụ bị từ chối: Chức vụ "${posName}" vẫn còn nhân sự hoạt động.`, 'error');
       return;
     }
 
     showDialog({
-      title: 'XÃ¡c nháº­n xoÃ¡',
-      message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xoÃ¡ chá»©c vá»¥: "${posName}"? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.`,
+      title: 'Xác nhận xoá',
+      message: `Bạn có chắc chắn muốn xoá chức vụ: "${posName}"? Hành động này không thể hoàn tác.`,
       type: 'confirm',
-      onConfirm: () => {
-        setPositions(prev => prev.filter(p => p !== posName));
-        pushLog(`Admin xoÃ¡ chá»©c vá»¥: ${posName}`, 'error');
+      onConfirm: async () => {
+        try {
+          await apiCall('/admin/positions', 'POST', { action: 'delete', name: posName });
+          pushLog(`Admin xoá chức vụ: ${posName}`, 'error');
+          await syncFromBackend();
+        } catch (err) {
+          showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+        }
       }
     });
   };
 
   // 2. Approval Center click triggers
-  const handleApproveRequest = (reqId) => {
-    // Quick action: instantly updates state & replaces buttons with status text
-    pushLog(`Admin phÃª duyá»‡t nhanh Ä‘Æ¡n sá»‘ REQ${reqId.toString().slice(-4)}`);
+  const handleApproveRequest = async (reqId) => {
+    pushLog(`Admin phê duyệt nhanh đơn số REQ${reqId.toString().slice(-4)}`);
     const targetReq = requests.find(r => r.id === reqId);
-    
-    // Update request status to Approved
-    setRequests(prev => prev.map(req => {
-      if (req.id === reqId) {
-        return { ...req, status: 'Approved' };
-      }
-      return req;
-    }));
-    
-    // If it is a punch correction request, automatically apply it to the attendance logs!
-    if (targetReq && targetReq.type.includes('Giáº£i trÃ¬nh')) {
-      const isCheckInCorrection = targetReq.type.includes('check-in');
-      const targetDate = targetReq.fromDate; // format YYYY-MM-DD
-      const targetTime = targetReq.correctedTime ? `${targetReq.correctedTime}:00` : '08:00:00';
-      const employeeId = targetReq.employeeId;
-      
-      setAttendanceHistory(prev => {
-        // Look up if a record for this date & employee exists
-        const logIndex = prev.findIndex(log => log.date === targetDate && log.employeeId === employeeId);
-        
-        if (logIndex !== -1) {
-          // Record exists, let's update it!
-          return prev.map((log, idx) => {
-            if (idx === logIndex) {
-              const updatedLog = { ...log };
-              if (isCheckInCorrection) {
-                updatedLog.clockIn = targetTime;
-                if (updatedLog.clockOut === '-' || updatedLog.clockOut === '') {
-                  updatedLog.clockOut = '12:00:00'; // default morning ca
-                }
-              } else {
-                updatedLog.clockOut = targetTime;
-                if (updatedLog.clockIn === '-' || updatedLog.clockIn === '') {
-                  updatedLog.clockIn = '08:00:00';
-                }
-              }
-              
-              // Recalculate hours
-              if (updatedLog.clockIn !== '-' && updatedLog.clockOut !== '-') {
-                const [inH, inM] = updatedLog.clockIn.split(':').map(Number);
-                const [outH, outM] = updatedLog.clockOut.split(':').map(Number);
-                
-                const timeInMin = inH * 60 + inM;
-                const timeOutMin = outH * 60 + outM;
-                
-                const diffHours = Math.max(0, (timeOutMin - timeInMin) / 60).toFixed(1);
-                updatedLog.actualHours = parseFloat(diffHours);
-              }
-              
-              updatedLog.status = 'Há»£p lá»‡'; // Marked valid after correction approval
-              return updatedLog;
-            }
-            return log;
-          });
-        } else {
-          // Record does not exist, create a new one!
-          const clockInStr = isCheckInCorrection ? targetTime : '08:00:00';
-          const clockOutStr = isCheckInCorrection ? '12:00:00' : targetTime;
-          
-          const [inH, inM] = clockInStr.split(':').map(Number);
-          const [outH, outM] = clockOutStr.split(':').map(Number);
-          const diffHours = Math.max(0, (outH * 60 + outM - (inH * 60 + inM)) / 60).toFixed(1);
-          
-          const newLog = {
-            id: Date.now(),
-            date: targetDate,
-            employeeId: employeeId,
-            shift: isCheckInCorrection ? 'Ca SÃ¡ng (08:00 - 12:00)' : 'Ca Chiá»u (13:30 - 17:30)',
-            clockIn: clockInStr,
-            clockOut: clockOutStr,
-            actualHours: parseFloat(diffHours),
-            status: 'Há»£p lá»‡'
-          };
-          return [newLog, ...prev];
-        }
-      });
-      
-      pushLog(`ÄÃ£ tá»± Ä‘á»™ng Ä‘iá»u chá»‰nh lá»‹ch sá»­ cháº¥m cÃ´ng ngÃ y ${targetDate} cho nhÃ¢n sá»± ${targetReq.employeeName}. Giá» má»›i: ${targetTime}.`, 'success');
-    }
 
-    pushLog(`ÄÆ¡n REQ${reqId.toString().slice(-4)} Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn tráº¡ng thÃ¡i: ÄÃƒ DUYá»†T`, 'success');
-    addNotification('PhÃª duyá»‡t Ä‘Æ¡n tá»«', `ÄÆ¡n ${targetReq?.type || 'yÃªu cáº§u'} cá»§a ${targetReq?.employeeName || 'nhÃ¢n viÃªn'} Ä‘Ã£ Ä‘Æ°á»£c Äá»’NG Ã.`, 'success');
-    confetti({ particleCount: 50, spread: 40 });
+    try {
+      await apiCall(`/requests/${reqId}`, 'PUT', { status: 'Approved' });
+      pushLog(`Đơn REQ${reqId.toString().slice(-4)} đã được chuyển trạng thái: ĐÃ DUYỆT`, 'success');
+      addNotification('Phê duyệt đơn từ', `Đơn ${targetReq?.type || 'yêu cầu'} của ${targetReq?.employeeName || 'nhân viên'} đã được ĐỒNG Ý.`, 'success');
+      confetti({ particleCount: 50, spread: 40 });
+      await syncFromBackend();
+    } catch (err) {
+      showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+    }
   };
 
   const handleRejectClick = (reqId) => {

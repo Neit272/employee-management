@@ -4,7 +4,7 @@ import { FileText, Plus, X, Calendar, FileDown, AlertTriangle, CheckCircle, Info
 import confetti from 'canvas-confetti';
 
 export default function Requests() {
-  const { currentUser, requests, setRequests, pushLog, addNotification } = useApp();
+  const { currentUser, requests, setRequests, pushLog, addNotification, apiCall, syncFromBackend } = useApp();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -50,7 +50,7 @@ export default function Requests() {
     pushLog(`Đã tải lên file minh chứng: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(1)} KB)`);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
 
@@ -89,22 +89,35 @@ export default function Requests() {
     setSubmitting(true);
     pushLog(`Đang gửi đơn: ${requestType} - Nhân viên: ${currentUser.fullName}...`);
 
-    setTimeout(() => {
-      const newRequest = {
-        id: Date.now(),
+    try {
+      const fileToBase64 = (f) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(f);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = (error) => reject(error);
+        });
+      };
+
+      let fileBase64 = null;
+      let fileMeta = null;
+      if (file) {
+        fileBase64 = await fileToBase64(file);
+        fileMeta = {
+          name: file.name,
+          size: (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+        };
+      }
+
+      await apiCall('/requests', 'POST', {
         type: requestType,
         fromDate,
         toDate,
         reason,
-        correctedTime: requestType.includes('Giải trình') ? correctedTime : null,
-        attachment: file ? { name: file.name, size: `${(file.size / 1024 / 1024).toFixed(1)} MB` } : null,
-        status: 'Pending',
-        employeeName: currentUser.fullName,
-        employeeId: currentUser.employeeId,
-        submitDate: todayStr
-      };
+        attachmentBase64: fileBase64,
+        attachmentMeta: fileMeta
+      });
 
-      setRequests(prev => [newRequest, ...prev]);
       setSubmitting(false);
       setIsModalOpen(false);
       addNotification('Đơn yêu cầu mới', `Nhân viên ${currentUser.fullName} đã gửi đơn ${requestType} mới đang chờ phê duyệt.`, 'info');
@@ -117,7 +130,13 @@ export default function Requests() {
       
       pushLog(`Tạo đơn ${requestType} thành công. Mã NV: ${currentUser.employeeId}. Trạng thái: Chờ duyệt.`, 'success');
       confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
-    }, 900);
+      
+      await syncFromBackend();
+    } catch (err) {
+      setFormError(err.message);
+      pushLog(`Lỗi gửi đơn: ${err.message}`, 'error');
+      setSubmitting(false);
+    }
   };
 
   const myRequests = requests.filter(req => req.employeeId === currentUser.employeeId);

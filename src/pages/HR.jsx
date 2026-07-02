@@ -4,7 +4,7 @@ import { UserCheck, ShieldCheck, Mail, AlertTriangle, Users, BookOpen } from 'lu
 import confetti from 'canvas-confetti';
 
 export default function HR() {
-  const { currentUser, allUsers, setAllUsers, departments, positions, pushLog } = useApp();
+  const { currentUser, allUsers, setAllUsers, departments, positions, pushLog, apiCall, syncFromBackend } = useApp();
 
   const [editingUserId, setEditingUserId] = useState(null);
   const [selectedRole, setSelectedRole] = useState('');
@@ -20,7 +20,7 @@ export default function HR() {
     setErrorMsg('');
   };
 
-  const handleSave = (userId) => {
+  const handleSave = async (userId) => {
     setErrorMsg('');
     const editingUser = allUsers.find(u => u.employeeId === userId);
 
@@ -33,33 +33,39 @@ export default function HR() {
 
     pushLog(`Đang cập nhật vai trò và phòng ban cho nhân sự mã: ${userId}...`);
 
-    setAllUsers(prev => prev.map(u => {
-      if (u.employeeId === userId) {
-        return { ...u, role: selectedRole, department: selectedDept, position: selectedPos };
-      }
-      return u;
-    }));
+    try {
+      await apiCall(`/admin/users/${userId}`, 'PUT', {
+        role: selectedRole,
+        department: selectedDept,
+        position: selectedPos
+      });
 
-    setEditingUserId(null);
-    pushLog(`Cập nhật thành công nhân sự ${editingUser.fullName}: Phòng ban -> ${selectedDept}, Vai trò -> ${selectedRole}`, 'success');
-    confetti({ particleCount: 50, spread: 40 });
+      setEditingUserId(null);
+      pushLog(`Cập nhật thành công nhân sự ${editingUser.fullName}: Phòng ban -> ${selectedDept}, Vai trò -> ${selectedRole}`, 'success');
+      confetti({ particleCount: 50, spread: 40 });
+      
+      await syncFromBackend();
+    } catch (err) {
+      setErrorMsg(err.message);
+      pushLog(`Lỗi cập nhật nhân sự: ${err.message}`, 'error');
+    }
   };
 
-  const handleApproveProfile = (user) => {
-    // Approve incomplete user profile details (completed via update modal)
+  const handleApproveProfile = async (user) => {
     pushLog(`Phê duyệt xác nhận thông tin hồ sơ của nhân sự: ${user.fullName} (${user.employeeId}).`);
     
-    setAllUsers(prev => prev.map(u => {
-      if (u.employeeId === user.employeeId) {
-        return { ...u, isProfileComplete: true };
-      }
-      return u;
-    }));
+    try {
+      await apiCall(`/admin/users/${user.employeeId}`, 'PUT', {
+        isProfileComplete: true
+      });
 
-    // Trigger mock email credential dispatch (no plain-text password)
-    pushLog(`[Bảo mật] Tài khoản ${user.fullName} đã được kích hoạt. Đã gửi email chứa: Mã NV (${user.employeeId}), Họ tên, Email đăng ký và Mật khẩu tạm thời được mã hóa bảo mật đến hòm thư nhân viên.`, 'success');
-    
-    confetti({ particleCount: 70, spread: 50 });
+      pushLog(`[Bảo mật] Tài khoản ${user.fullName} đã được kích hoạt. Đã gửi email chứa: Mã NV (${user.employeeId}), Họ tên, Email đăng ký và Mật khẩu tạm thời được mã hóa bảo mật đến hòm thư nhân viên.`, 'success');
+      confetti({ particleCount: 70, spread: 50 });
+      
+      await syncFromBackend();
+    } catch (err) {
+      pushLog(`Lỗi phê duyệt hồ sơ: ${err.message}`, 'error');
+    }
   };
 
   return (
