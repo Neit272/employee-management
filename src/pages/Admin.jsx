@@ -1,6 +1,6 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, Folder, FileCheck, FileX, Download, Plus, Trash2, Edit2, AlertCircle, UserPlus } from 'lucide-react';
+import { Settings, Folder, FileCheck, FileX, Download, Plus, Trash2, Edit2, AlertCircle, UserPlus, Lock, Unlock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function Admin() {
@@ -19,7 +19,8 @@ export default function Admin() {
     setAttendanceHistory,
     pushLog,
     addNotification,
-    showDialog
+    showDialog,
+    triggerUndo
   } = useApp();
 
   // User Account Management States
@@ -70,7 +71,7 @@ export default function Admin() {
   const handleSaveAccount = (e) => {
     e.preventDefault();
     if (!accountForm.fullName.trim() || !accountForm.email.trim() || !accountForm.employeeId.trim()) {
-      showDialog({ title: 'Lá»—i nháº­p liá»‡u', message: 'Vui lÃ²ng Ä‘iá»n Ä‘áº§y Ä‘á»§ thÃ´ng tin báº¯t buá»™c.', type: 'warning' });
+      showDialog({ title: 'Lỗi nhập liệu', message: 'Vui lòng điền đầy đủ thông tin bắt buộc.', type: 'warning' });
       return;
     }
 
@@ -89,12 +90,12 @@ export default function Admin() {
         }
         return u;
       }));
-      pushLog(`Admin cáº­p nháº­t tÃ i khoáº£n: ${accountForm.fullName} (${accountForm.employeeId})`, 'success');
-      showDialog({ title: 'ThÃ nh cÃ´ng', message: `ÄÃ£ cáº­p nháº­t tÃ i khoáº£n ${accountForm.fullName} thÃ nh cÃ´ng.`, type: 'success' });
+      pushLog(`Admin cập nhật tài khoản: ${accountForm.fullName} (${accountForm.employeeId})`, 'success');
+      showDialog({ title: 'Thành công', message: `Đã cập nhật tài khoản ${accountForm.fullName} thành công.`, type: 'success' });
     } else {
       // Adding new
       if (allUsers.some(u => u.employeeId === accountForm.employeeId)) {
-        showDialog({ title: 'TrÃ¹ng mÃ£ nhÃ¢n viÃªn', message: 'MÃ£ nhÃ¢n viÃªn nÃ y Ä‘Ã£ tá»“n táº¡i trong há»‡ thá»‘ng.', type: 'error' });
+        showDialog({ title: 'Trùng mã nhân viên', message: 'Mã nhân viên này đã tồn tại trong hệ thống.', type: 'error' });
         return;
       }
       const newAcc = {
@@ -113,8 +114,8 @@ export default function Admin() {
         isProfileComplete: false
       };
       setAllUsers(prev => [...prev, newAcc]);
-      pushLog(`Admin táº¡o má»›i tÃ i khoáº£n: ${newAcc.fullName} (${newAcc.employeeId})`, 'success');
-      showDialog({ title: 'ThÃ nh cÃ´ng', message: `ÄÃ£ táº¡o tÃ i khoáº£n ${newAcc.fullName} thÃ nh cÃ´ng. NhÃ¢n sá»± cáº§n hoÃ n thiá»‡n thÃ´ng tin khi Ä‘Äƒng nháº­p.`, type: 'success' });
+      pushLog(`Admin tạo mới tài khoản: ${newAcc.fullName} (${newAcc.employeeId})`, 'success');
+      showDialog({ title: 'Thành công', message: `Đã tạo tài khoản ${newAcc.fullName} thành công. Nhân sự cần hoàn thiện thông tin khi đăng nhập.`, type: 'success' });
     }
 
     setIsAccountModalOpen(false);
@@ -123,22 +124,53 @@ export default function Admin() {
   const handleDeleteAccount = (user) => {
     if (user.employeeId === currentUser.employeeId) {
       showDialog({
-        title: 'Báº£o máº­t cháº·n',
-        message: 'Lá»—i an toÃ n: Báº¡n khÃ´ng thá»ƒ tá»± xÃ³a tÃ i khoáº£n Admin Ä‘ang Ä‘Äƒng nháº­p cá»§a chÃ­nh mÃ¬nh!',
+        title: 'Bảo mật chặn',
+        message: 'Lỗi an toàn: Bạn không thể tự xóa tài khoản Admin đang đăng nhập của chính mình!',
         type: 'error'
       });
       return;
     }
 
-    showDialog({
-      title: 'XÃ¡c nháº­n xÃ³a tÃ i khoáº£n',
-      message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a tÃ i khoáº£n "${user.fullName}" (${user.employeeId}) khá»i há»‡ thá»‘ng? Dá»¯ liá»‡u tÃ i khoáº£n sáº½ máº¥t vÄ©nh viá»…n.`,
-      type: 'confirm',
-      onConfirm: () => {
-        setAllUsers(prev => prev.filter(u => u.employeeId !== user.employeeId));
-        pushLog(`Admin xÃ³a tÃ i khoáº£n nhÃ¢n viÃªn: ${user.fullName} (${user.employeeId})`, 'error');
-        showDialog({ title: 'ÄÃ£ xÃ³a', message: `TÃ i khoáº£n ${user.fullName} Ä‘Ã£ bá»‹ loáº¡i bá» khá»i há»‡ thá»‘ng.`, type: 'success' });
+    const originalUsers = [...allUsers];
+    setAllUsers(prev => prev.filter(u => u.employeeId !== user.employeeId));
+    pushLog(`Yêu cầu xóa tài khoản: ${user.fullName} (${user.employeeId})`, 'warning');
+
+    triggerUndo(
+      `Đã xóa tài khoản "${user.fullName}" (${user.employeeId})`,
+      () => {
+        pushLog(`Admin xóa vĩnh viễn tài khoản nhân viên: ${user.fullName} (${user.employeeId})`, 'error');
+        addNotification('Xóa tài khoản', `Tài khoản của ${user.fullName} đã bị loại bỏ khỏi hệ thống.`, 'error');
+      },
+      () => {
+        setAllUsers(originalUsers);
+        pushLog(`Hoàn tác xóa tài khoản nhân viên: ${user.fullName} (${user.employeeId})`, 'success');
       }
+    );
+  };
+
+  const handleToggleLockAccount = (user) => {
+    if (user.employeeId === currentUser.employeeId) {
+      showDialog({
+        title: 'Bảo mật chặn',
+        message: 'Lỗi an toàn: Bạn không thể tự khóa tài khoản Admin của chính mình!',
+        type: 'error'
+      });
+      return;
+    }
+
+    const newStatus = !user.isLocked;
+    setAllUsers(prev => prev.map(u => {
+      if (u.employeeId === user.employeeId) {
+        return { ...u, isLocked: newStatus };
+      }
+      return u;
+    }));
+
+    pushLog(`Admin ${newStatus ? 'khóa' : 'mở khóa'} tài khoản: ${user.fullName} (${user.employeeId})`, newStatus ? 'error' : 'success');
+    showDialog({
+      title: 'Thành công',
+      message: `Đã ${newStatus ? 'khóa' : 'mở khóa'} tài khoản ${user.fullName} thành công.`,
+      type: 'success'
     });
   };
 
@@ -146,7 +178,7 @@ export default function Admin() {
   const [editingLog, setEditingLog] = useState(null);
   const [editClockIn, setEditClockIn] = useState('');
   const [editClockOut, setEditClockOut] = useState('');
-  const [editStatus, setEditStatus] = useState('Há»£p lá»‡');
+  const [editStatus, setEditStatus] = useState('Hợp lệ');
 
   const startEditLog = (log) => {
     setEditingLog(log);
@@ -183,11 +215,11 @@ export default function Admin() {
     }));
 
     const empName = allUsers.find(u => u.employeeId === editingLog.employeeId)?.fullName || editingLog.employeeId;
-    pushLog(`Admin sá»­a thá»§ cÃ´ng cháº¥m cÃ´ng nhÃ¢n sá»± ${empName} ngÃ y ${editingLog.date} thÃ nh [In: ${clockInVal}, Out: ${clockOutVal}, TT: ${editStatus}]`, 'success');
+    pushLog(`Admin sửa thủ công chấm công nhân sự ${empName} ngày ${editingLog.date} thành [In: ${clockInVal}, Out: ${clockOutVal}, TT: ${editStatus}]`, 'success');
     
     showDialog({
-      title: 'ÄÃ£ cáº­p nháº­t giá» cÃ´ng',
-      message: `ÄÃ£ cáº­p nháº­t lá»‹ch sá»­ cháº¥m cÃ´ng ngÃ y ${editingLog.date} cho nhÃ¢n sá»± thÃ nh cÃ´ng.`,
+      title: 'Đã cập nhật giờ công',
+      message: `Đã cập nhật lịch sử chấm công ngày ${editingLog.date} cho nhân sự thành công.`,
       type: 'success'
     });
 
@@ -226,14 +258,14 @@ export default function Admin() {
     if (!newDept.trim()) return;
     if (departments.includes(newDept.trim())) {
       showDialog({
-        title: 'TrÃ¹ng láº·p tÃªn',
-        message: 'TÃªn phÃ²ng ban nÃ y Ä‘Ã£ tá»“n táº¡i trong há»‡ thá»‘ng.',
+        title: 'Trùng lặp tên',
+        message: 'Tên phòng ban này đã tồn tại trong hệ thống.',
         type: 'warning'
       });
       return;
     }
     setDepartments(prev => [...prev, newDept.trim()]);
-    pushLog(`Admin táº¡o phÃ²ng ban má»›i: ${newDept.trim()}`, 'success');
+    pushLog(`Admin tạo phòng ban mới: ${newDept.trim()}`, 'success');
     setNewDept('');
   };
 
@@ -242,23 +274,28 @@ export default function Admin() {
     const isDeptOccupied = allUsers.some(u => u.department === deptName);
     if (isDeptOccupied) {
       showDialog({
-        title: 'KhÃ´ng thá»ƒ xoÃ¡ phÃ²ng ban',
-        message: `KhÃ´ng thá»ƒ xoÃ¡ phÃ²ng ban "${deptName}" vÃ¬ Ä‘ang cÃ³ nhÃ¢n sá»± thuá»™c phÃ²ng ban nÃ y. Vui lÃ²ng Ä‘iá»u chuyá»ƒn cÃ¡c nhÃ¢n sá»± sang phÃ²ng ban khÃ¡c trÆ°á»›c!`,
+        title: 'Không thể xoá phòng ban',
+        message: `Không thể xoá phòng ban "${deptName}" vì đang có nhân sự thuộc phòng ban này. Vui lòng điều chuyển các nhân sự sang phòng ban khác trước!`,
         type: 'error'
       });
-      pushLog(`XoÃ¡ phÃ²ng ban bá»‹ tá»« chá»‘i: PhÃ²ng "${deptName}" váº«n cÃ²n nhÃ¢n sá»± hoáº¡t Ä‘á»™ng.`, 'error');
+      pushLog(`Xoá phòng ban bị từ chối: Phòng "${deptName}" vẫn còn nhân sự hoạt động.`, 'error');
       return;
     }
 
-    showDialog({
-      title: 'XÃ¡c nháº­n xoÃ¡',
-      message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xoÃ¡ phÃ²ng ban: "${deptName}"? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.`,
-      type: 'confirm',
-      onConfirm: () => {
-        setDepartments(prev => prev.filter(d => d !== deptName));
-        pushLog(`Admin xoÃ¡ phÃ²ng ban: ${deptName}`, 'error');
+    const originalDepts = [...departments];
+    setDepartments(prev => prev.filter(d => d !== deptName));
+    pushLog(`Yêu cầu xóa phòng ban: ${deptName}`, 'warning');
+
+    triggerUndo(
+      `Đã xóa phòng ban "${deptName}"`,
+      () => {
+        pushLog(`Admin xóa vĩnh viễn phòng ban: ${deptName}`, 'error');
+      },
+      () => {
+        setDepartments(originalDepts);
+        pushLog(`Hoàn tác xóa phòng ban: ${deptName}`, 'success');
       }
-    });
+    );
   };
 
   const handleAddPos = (e) => {
@@ -266,14 +303,14 @@ export default function Admin() {
     if (!newPos.trim()) return;
     if (positions.includes(newPos.trim())) {
       showDialog({
-        title: 'TrÃ¹ng láº·p tÃªn',
-        message: 'TÃªn chá»©c vá»¥ nÃ y Ä‘Ã£ tá»“n táº¡i trong há»‡ thá»‘ng.',
+        title: 'Trùng lặp tên',
+        message: 'Tên chức vụ này đã tồn tại trong hệ thống.',
         type: 'warning'
       });
       return;
     }
     setPositions(prev => [...prev, newPos.trim()]);
-    pushLog(`Admin táº¡o chá»©c vá»¥ má»›i: ${newPos.trim()}`, 'success');
+    pushLog(`Admin tạo chức vụ mới: ${newPos.trim()}`, 'success');
     setNewPos('');
   };
 
@@ -282,29 +319,34 @@ export default function Admin() {
     const isPosOccupied = allUsers.some(u => u.position === posName);
     if (isPosOccupied) {
       showDialog({
-        title: 'KhÃ´ng thá»ƒ xoÃ¡ chá»©c vá»¥',
-        message: `KhÃ´ng thá»ƒ xoÃ¡ chá»©c vá»¥ "${posName}" vÃ¬ Ä‘ang cÃ³ nhÃ¢n sá»± giá»¯ chá»©c vá»¥ nÃ y. Vui lÃ²ng Ä‘iá»u chuyá»ƒn cÃ¡c nhÃ¢n sá»± sang chá»©c vá»¥ khÃ¡c trÆ°á»›c!`,
+        title: 'Không thể xoá chức vụ',
+        message: `Không thể xoá chức vụ "${posName}" vì đang có nhân sự giữ chức vụ này. Vui lòng điều chuyển các nhân sự sang chức vụ khác trước!`,
         type: 'error'
       });
-      pushLog(`XoÃ¡ chá»©c vá»¥ bá»‹ tá»« chá»‘i: Chá»©c vá»¥ "${posName}" váº«n cÃ²n nhÃ¢n sá»± hoáº¡t Ä‘á»™ng.`, 'error');
+      pushLog(`Xoá chức vụ bị từ chối: Chức vụ "${posName}" vẫn còn nhân sự hoạt động.`, 'error');
       return;
     }
 
-    showDialog({
-      title: 'XÃ¡c nháº­n xoÃ¡',
-      message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xoÃ¡ chá»©c vá»¥: "${posName}"? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.`,
-      type: 'confirm',
-      onConfirm: () => {
-        setPositions(prev => prev.filter(p => p !== posName));
-        pushLog(`Admin xoÃ¡ chá»©c vá»¥: ${posName}`, 'error');
+    const originalPositions = [...positions];
+    setPositions(prev => prev.filter(p => p !== posName));
+    pushLog(`Yêu cầu xóa chức vụ: ${posName}`, 'warning');
+
+    triggerUndo(
+      `Đã xóa chức vụ "${posName}"`,
+      () => {
+        pushLog(`Admin xóa vĩnh viễn chức vụ: ${posName}`, 'error');
+      },
+      () => {
+        setPositions(originalPositions);
+        pushLog(`Hoàn tác xóa chức vụ: ${posName}`, 'success');
       }
-    });
+    );
   };
 
   // 2. Approval Center click triggers
   const handleApproveRequest = (reqId) => {
     // Quick action: instantly updates state & replaces buttons with status text
-    pushLog(`Admin phÃª duyá»‡t nhanh Ä‘Æ¡n sá»‘ REQ${reqId.toString().slice(-4)}`);
+    pushLog(`Admin phê duyệt nhanh đơn số REQ${reqId.toString().slice(-4)}`);
     const targetReq = requests.find(r => r.id === reqId);
     
     // Update request status to Approved
@@ -316,7 +358,7 @@ export default function Admin() {
     }));
     
     // If it is a punch correction request, automatically apply it to the attendance logs!
-    if (targetReq && targetReq.type.includes('Giáº£i trÃ¬nh')) {
+    if (targetReq && targetReq.type.includes('Giải trình')) {
       const isCheckInCorrection = targetReq.type.includes('check-in');
       const targetDate = targetReq.fromDate; // format YYYY-MM-DD
       const targetTime = targetReq.correctedTime ? `${targetReq.correctedTime}:00` : '08:00:00';
@@ -355,7 +397,7 @@ export default function Admin() {
                 updatedLog.actualHours = parseFloat(diffHours);
               }
               
-              updatedLog.status = 'Há»£p lá»‡'; // Marked valid after correction approval
+              updatedLog.status = 'Hợp lệ'; // Marked valid after correction approval
               return updatedLog;
             }
             return log;
@@ -373,21 +415,21 @@ export default function Admin() {
             id: Date.now(),
             date: targetDate,
             employeeId: employeeId,
-            shift: isCheckInCorrection ? 'Ca SÃ¡ng (08:00 - 12:00)' : 'Ca Chiá»u (13:30 - 17:30)',
+            shift: isCheckInCorrection ? 'Ca Sáng (08:00 - 12:00)' : 'Ca Chiều (13:30 - 17:30)',
             clockIn: clockInStr,
             clockOut: clockOutStr,
             actualHours: parseFloat(diffHours),
-            status: 'Há»£p lá»‡'
+            status: 'Hợp lệ'
           };
           return [newLog, ...prev];
         }
       });
       
-      pushLog(`ÄÃ£ tá»± Ä‘á»™ng Ä‘iá»u chá»‰nh lá»‹ch sá»­ cháº¥m cÃ´ng ngÃ y ${targetDate} cho nhÃ¢n sá»± ${targetReq.employeeName}. Giá» má»›i: ${targetTime}.`, 'success');
+      pushLog(`Đã tự động điều chỉnh lịch sử chấm công ngày ${targetDate} cho nhân sự ${targetReq.employeeName}. Giờ mới: ${targetTime}.`, 'success');
     }
 
-    pushLog(`ÄÆ¡n REQ${reqId.toString().slice(-4)} Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn tráº¡ng thÃ¡i: ÄÃƒ DUYá»†T`, 'success');
-    addNotification('PhÃª duyá»‡t Ä‘Æ¡n tá»«', `ÄÆ¡n ${targetReq?.type || 'yÃªu cáº§u'} cá»§a ${targetReq?.employeeName || 'nhÃ¢n viÃªn'} Ä‘Ã£ Ä‘Æ°á»£c Äá»’NG Ã.`, 'success');
+    pushLog(`Đơn REQ${reqId.toString().slice(-4)} đã được chuyển trạng thái: ĐÃ DUYỆT`, 'success');
+    addNotification('Phê duyệt đơn từ', `Đơn ${targetReq?.type || 'yêu cầu'} của ${targetReq?.employeeName || 'nhân viên'} đã được ĐỒNG Ý.`, 'success');
     confetti({ particleCount: 50, spread: 40 });
   };
 
@@ -402,7 +444,7 @@ export default function Admin() {
 
     const reqId = rejectingReqId;
     const targetReq = requests.find(r => r.id === reqId);
-    pushLog(`Admin tá»« chá»‘i Ä‘Æ¡n sá»‘ REQ${reqId.toString().slice(-4)} vá»›i lÃ½ do: ${rejectComment.trim()}`);
+    pushLog(`Admin từ chối đơn số REQ${reqId.toString().slice(-4)} với lý do: ${rejectComment.trim()}`);
     
     setRequests(prev => prev.map(req => {
       if (req.id === reqId) {
@@ -412,8 +454,8 @@ export default function Admin() {
     }));
 
     setRejectingReqId(null);
-    pushLog(`ÄÆ¡n REQ${reqId.toString().slice(-4)} Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn tráº¡ng thÃ¡i: Tá»ª CHá»I`, 'error');
-    addNotification('Tá»« chá»‘i Ä‘Æ¡n tá»«', `ÄÆ¡n ${targetReq?.type || 'yÃªu cáº§u'} cá»§a ${targetReq?.employeeName || 'nhÃ¢n viÃªn'} Ä‘Ã£ bá»‹ Tá»ª CHá»I. LÃ½ do: ${rejectComment.trim()}`, 'error');
+    pushLog(`Đơn REQ${reqId.toString().slice(-4)} đã được chuyển trạng thái: TỪ CHỐI`, 'error');
+    addNotification('Từ chối đơn từ', `Đơn ${targetReq?.type || 'yêu cầu'} của ${targetReq?.employeeName || 'nhân viên'} đã bị TỪ CHỐI. Lý do: ${rejectComment.trim()}`, 'error');
   };
 
   // 3. Admin self-demotion protection rule
@@ -421,15 +463,15 @@ export default function Admin() {
     // Safeguard constraint: check if the admin is trying to demote their own account
     if (userId === currentUser.employeeId && newRole !== 'Admin') {
       showDialog({
-        title: 'Báº£o máº­t tá»‘i cao cháº·n',
-        message: 'Há»‡ thá»‘ng báº£o máº­t tá»‘i cao ngÄƒn cháº·n tÃ i khoáº£n Admin tá»± tÆ°á»›c quyá»n hoáº·c háº¡ vai trÃ² cá»§a chÃ­nh mÃ¬nh.',
+        title: 'Bảo mật tối cao chặn',
+        message: 'Hệ thống bảo mật tối cao ngăn chặn tài khoản Admin tự tước quyền hoặc hạ vai trò của chính mình.',
         type: 'error'
       });
-      pushLog('Báº£o máº­t cháº·n: Admin khÃ´ng Ä‘Æ°á»£c tá»± háº¡ quyá»n báº£n thÃ¢n.', 'error');
+      pushLog('Bảo mật chặn: Admin không được tự hạ quyền bản thân.', 'error');
       return;
     }
 
-    pushLog(`Admin thay Ä‘á»•i vai trÃ² cá»§a nhÃ¢n sá»± ID: ${userId} thÃ nh ${newRole}`);
+    pushLog(`Admin thay đổi vai trò của nhân sự ID: ${userId} thành ${newRole}`);
     setAllUsers(prev => prev.map(u => {
       if (u.employeeId === userId) {
         return { ...u, role: newRole };
@@ -470,9 +512,13 @@ export default function Admin() {
   });
 
   // Filtered rows for empty state checks
-  const filteredTimesheet = mockTimesheetGrid.filter(row => 
-    row.fullName.toLowerCase().includes(timesheetSearch.toLowerCase())
-  );
+  const filteredTimesheet = mockTimesheetGrid.filter(row => {
+    const q = timesheetSearch.toLowerCase();
+    return (
+      row.fullName.toLowerCase().includes(q) ||
+      row.employeeId.toLowerCase().includes(q)
+    );
+  });
 
   // 5. Filtered manual attendance edit log
   const filteredManualLogs = attendanceHistory.filter(log => {
@@ -612,7 +658,7 @@ export default function Admin() {
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                         }`}>
-                          {req.status === 'Approved' ? 'ÄÃ£ duyá»‡t' : 'ÄÃ£ tá»« chá»‘i'}
+                          {req.status === 'Approved' ? 'Đã duyệt' : 'Đã từ chối'}
                         </span>
                       )}
                     </td>
@@ -629,13 +675,13 @@ export default function Admin() {
         
         {/* Dynamic Departments CRUD */}
         <div className="bg-slate-900/30 border border-slate-855 rounded-3xl p-6 shadow-xl space-y-4">
-          <h3 className="font-bold text-slate-200">Quáº£n lÃ½ PhÃ²ng Ban (CRUD Äá»™ng)</h3>
+          <h3 className="font-bold text-slate-200">Quản lý Phòng Ban (CRUD Động)</h3>
           
           <form onSubmit={handleAddDept} className="flex gap-2">
             <input
               type="text"
               required
-              placeholder="TÃªn phÃ²ng ban má»›i..."
+              placeholder="Tên phòng ban mới..."
               value={newDept}
               onChange={(e) => setNewDept(e.target.value)}
               className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
@@ -644,7 +690,7 @@ export default function Admin() {
               type="submit"
               className="bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold px-4 rounded-xl text-xs flex items-center gap-1 transition"
             >
-              <Plus className="w-4 h-4" /> ThÃªm
+              <Plus className="w-4 h-4" /> Thêm
             </button>
           </form>
 
@@ -665,13 +711,13 @@ export default function Admin() {
 
         {/* Dynamic Positions CRUD */}
         <div className="bg-slate-900/30 border border-slate-855 rounded-3xl p-6 shadow-xl space-y-4">
-          <h3 className="font-bold text-slate-200">Quáº£n lÃ½ Chá»©c Vá»¥ (CRUD Äá»™ng)</h3>
+          <h3 className="font-bold text-slate-200">Quản lý Chức Vụ (CRUD Động)</h3>
           
           <form onSubmit={handleAddPos} className="flex gap-2">
             <input
               type="text"
               required
-              placeholder="TÃªn chá»©c vá»¥ má»›i..."
+              placeholder="Tên chức vụ mới..."
               value={newPos}
               onChange={(e) => setNewPos(e.target.value)}
               className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
@@ -680,7 +726,7 @@ export default function Admin() {
               type="submit"
               className="bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold px-4 rounded-xl text-xs flex items-center gap-1 transition"
             >
-              <Plus className="w-4 h-4" /> ThÃªm
+              <Plus className="w-4 h-4" /> Thêm
             </button>
           </form>
 
@@ -706,15 +752,15 @@ export default function Admin() {
         <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="font-bold text-slate-200">Quáº£n lÃ½ TÃ i khoáº£n Há»‡ thá»‘ng</h3>
-              <p className="text-slate-500 text-xs mt-0.5">ThÃªm má»›i, sá»­a Ä‘á»•i thÃ´ng tin vÃ  phÃ¢n quyá»n truy cáº­p cho nhÃ¢n sá»± trong doanh nghiá»‡p.</p>
+              <h3 className="font-bold text-slate-200">Quản lý Tài khoản Hệ thống</h3>
+              <p className="text-slate-500 text-xs mt-0.5">Thêm mới, sửa đổi thông tin và phân quyền truy cập cho nhân sự trong doanh nghiệp.</p>
             </div>
             <button
               onClick={openAddAccountModal}
               className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition shrink-0"
             >
               <UserPlus className="w-4 h-4" />
-              Táº¡o tÃ i khoáº£n má»›i
+              Tạo tài khoản mới
             </button>
           </div>
           {/* Search bar */}
@@ -722,34 +768,35 @@ export default function Admin() {
             <div className="relative flex-1 max-w-sm">
               <input
                 type="text"
-                placeholder="TÃ¬m tÃªn, mÃ£ NV, phÃ²ng ban, vai trÃ²..."
+                placeholder="Tìm tên, mã NV, phòng ban, vai trò..."
                 value={accountSearch}
                 onChange={(e) => setAccountSearch(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
               />
-              {accountSearch && <button onClick={() => setAccountSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">âœ•</button>}
+              {accountSearch && <button onClick={() => setAccountSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">✕</button>}
             </div>
-            <span className="text-xs text-slate-500 shrink-0">{filteredAccounts.length} / {allUsers.length} tÃ i khoáº£n</span>
+            <span className="text-xs text-slate-500 shrink-0">{filteredAccounts.length} / {allUsers.length} tài khoản</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <div className="h-[400px] overflow-y-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-0 z-10 bg-slate-900">
                 <tr className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-850">
-                  <th className="px-6 py-3.5">MÃ£ NV / Há» TÃªn</th>
-                  <th className="px-6 py-3.5">Email liÃªn há»‡</th>
-                  <th className="px-6 py-3.5">PhÃ²ng ban</th>
-                  <th className="px-6 py-3.5">Chá»©c vá»¥</th>
-                  <th className="px-6 py-3.5 text-center">Vai trÃ² (Role)</th>
-                  <th className="px-6 py-3.5 text-center">Tráº¡ng thÃ¡i há»“ sÆ¡</th>
-                  <th className="px-6 py-3.5 text-right">Thao tÃ¡c</th>
+                  <th className="px-6 py-3.5">Mã NV / Họ Tên</th>
+                  <th className="px-6 py-3.5">Email liên hệ</th>
+                  <th className="px-6 py-3.5">Phòng ban</th>
+                  <th className="px-6 py-3.5">Chức vụ</th>
+                  <th className="px-6 py-3.5 text-center">Vai trò (Role)</th>
+                  <th className="px-6 py-3.5 text-center">Trạng thái hồ sơ</th>
+                  <th className="px-6 py-3.5 text-center">Trạng thái</th>
+                  <th className="px-6 py-3.5 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850/60 text-slate-300">
                 {filteredAccounts.length === 0 ? (
-                  <tr><td colSpan="7" className="px-6 py-8 text-center text-slate-500 italic">KhÃ´ng tÃ¬m tháº¥y tÃ i khoáº£n phÃ¹ há»£p.</td></tr>
+                  <tr><td colSpan="8" className="px-6 py-8 text-center text-slate-500 italic">Không tìm thấy tài khoản phù hợp.</td></tr>
                 ) : filteredAccounts.map((user) => (
                   <tr key={user.employeeId} className="hover:bg-slate-900/10 transition">
                     <td className="px-6 py-3.5 font-bold text-slate-200">
@@ -764,8 +811,8 @@ export default function Admin() {
                       </div>
                     </td>
                     <td className="px-6 py-3.5 font-mono text-slate-350">{user.email}</td>
-                    <td className="px-6 py-3.5 text-slate-400">{user.department || <span className="text-slate-600 italic">ChÆ°a xáº¿p</span>}</td>
-                    <td className="px-6 py-3.5 text-slate-400">{user.position || <span className="text-slate-600 italic">ChÆ°a xáº¿p</span>}</td>
+                    <td className="px-6 py-3.5 text-slate-400">{user.department || <span className="text-slate-600 italic">Chưa xếp</span>}</td>
+                    <td className="px-6 py-3.5 text-slate-400">{user.position || <span className="text-slate-600 italic">Chưa xếp</span>}</td>
                     <td className="px-6 py-3.5 text-center">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                         user.role === 'Admin' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' :
@@ -782,17 +829,34 @@ export default function Admin() {
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                           : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
                       }`}>
-                        {user.isProfileComplete ? 'ÄÃ£ hoÃ n thiá»‡n' : 'Chá» hoÃ n thiá»‡n'}
+                        {user.isProfileComplete ? 'Đã hoàn thiện' : 'Chờ hoàn thiện'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-center">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        user.isLocked
+                          ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                          : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                      }`}>
+                        {user.isLocked ? 'Bị khóa' : 'Hoạt động'}
                       </span>
                     </td>
                     <td className="px-6 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2.5">
+                        <button onClick={() => handleToggleLockAccount(user)}
+                          className={`p-1.5 rounded-lg transition border ${
+                            user.isLocked
+                              ? 'bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border-emerald-500/30'
+                              : 'bg-rose-500/10 hover:bg-rose-500 hover:text-slate-950 text-rose-400 border-rose-500/30'
+                          }`} title={user.isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}>
+                          {user.isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                        </button>
                         <button onClick={() => openEditAccountModal(user)}
-                          className="p-1.5 bg-slate-800 hover:bg-teal-500 hover:text-slate-950 text-slate-400 rounded-lg transition border border-slate-700" title="Chá»‰nh sá»­a tÃ i khoáº£n">
+                          className="p-1.5 bg-slate-800 hover:bg-teal-500 hover:text-slate-950 text-slate-400 rounded-lg transition border border-slate-700" title="Chỉnh sửa tài khoản">
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={() => handleDeleteAccount(user)}
-                          className="p-1.5 bg-slate-850 hover:bg-rose-500/20 hover:text-rose-400 text-slate-500 rounded-lg transition border border-slate-800" title="XÃ³a tÃ i khoáº£n">
+                          className="p-1.5 bg-slate-850 hover:bg-rose-500/20 hover:text-rose-400 text-slate-500 rounded-lg transition border border-slate-800" title="Xóa tài khoản">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -809,14 +873,14 @@ export default function Admin() {
       <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">
         <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h3 className="font-bold text-slate-200">Báº£ng CÃ´ng Tá»•ng Há»£p ThÃ¡ng</h3>
-            <p className="text-slate-500 text-xs mt-0.5">KÃ½ hiá»‡u mÃ£ hoÃ¡: X (Äi lÃ m), P (Nghá»‰ phÃ©p hÆ°á»Ÿng lÆ°Æ¡ng), Ro (Nghá»‰ khÃ´ng lÆ°Æ¡ng)</p>
+            <h3 className="font-bold text-slate-200">Bảng Công Tổng Hợp Tháng</h3>
+            <p className="text-slate-500 text-xs mt-0.5">Ký hiệu mã hoá: X (Đi làm), P (Nghỉ phép hưởng lương), Ro (Nghỉ không lương)</p>
           </div>
           
           <div className="flex items-center gap-2.5">
             <input
               type="text"
-              placeholder="TÃ¬m kiáº¿m nhÃ¢n viÃªn..."
+              placeholder="Tìm kiếm nhân viên..."
               value={timesheetSearch}
               onChange={(e) => setTimesheetSearch(e.target.value)}
               className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500 w-44"
@@ -829,22 +893,22 @@ export default function Admin() {
                 className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
               >
                 <Download className="w-4 h-4" />
-                Xuáº¥t file
+                Xuất file
               </button>
             )}
           </div>
         </div>
 
-        <div className="overflow-x-auto max-w-full">
+        <div className="overflow-auto max-w-full min-h-[320px] max-h-[500px]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-950/40 text-slate-400 font-semibold border-b border-slate-850">
-                <th className="px-4 py-3 shrink-0 min-w-[120px] sticky left-0 bg-slate-900/90 backdrop-blur border-r border-slate-800 z-20">NhÃ¢n viÃªn</th>
-                <th className="px-3 py-3 text-center min-w-[50px] text-emerald-400 font-bold border-r border-slate-800 bg-slate-950/50">CÃ´ng</th>
-                <th className="px-3 py-3 text-center min-w-[50px] text-blue-400 font-bold border-r border-slate-800 bg-slate-950/50">PhÃ©p</th>
-                <th className="px-3 py-3 text-center min-w-[50px] text-rose-400 font-bold border-r border-slate-800 bg-slate-950/50">Nghá»‰</th>
+            <thead className="sticky top-0 z-30">
+              <tr className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-850">
+                <th className="px-4 py-3 shrink-0 min-w-[120px] sticky left-0 top-0 bg-slate-950 border-r border-slate-800 z-40">Nhân viên</th>
+                <th className="px-3 py-3 text-center min-w-[50px] text-emerald-400 font-bold border-r border-slate-800 bg-slate-950/80 sticky top-0 z-20">Công</th>
+                <th className="px-3 py-3 text-center min-w-[50px] text-blue-400 font-bold border-r border-slate-800 bg-slate-950/80 sticky top-0 z-20">Phép</th>
+                <th className="px-3 py-3 text-center min-w-[50px] text-rose-400 font-bold border-r border-slate-800 bg-slate-950/80 sticky top-0 z-20">Nghỉ</th>
                 {daysInMonth.map((d) => (
-                  <th key={d} className="px-2 py-3 text-center min-w-[30px]">{d}</th>
+                  <th key={d} className="px-2 py-3 text-center min-w-[30px] bg-slate-950 sticky top-0 z-10">{d}</th>
                 ))}
               </tr>
             </thead>
@@ -852,13 +916,13 @@ export default function Admin() {
               {filteredTimesheet.length === 0 ? (
                 <tr>
                   <td colSpan="35" className="px-6 py-10 text-center text-slate-500 italic">
-                    KhÃ´ng tÃ¬m tháº¥y nhÃ¢n viÃªn nÃ o phÃ¹ há»£p bá»™ lá»c.
+                    Không tìm thấy nhân viên nào phù hợp bộ lọc.
                   </td>
                 </tr>
               ) : (
                 filteredTimesheet.map((row) => (
                   <tr key={row.employeeId} className="hover:bg-slate-900/10">
-                    <td className="px-4 py-2.5 font-medium text-slate-250 sticky left-0 bg-slate-900/90 border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.2)]">
+                    <td className="px-4 py-2.5 font-medium text-slate-250 sticky left-0 bg-slate-900 border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.2)]">
                       {row.fullName}
                       <span className="block text-[10px] text-slate-500">ID: {row.employeeId}</span>
                     </td>
@@ -893,11 +957,11 @@ export default function Admin() {
         <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
-              <h3 className="font-bold text-slate-200">Báº£ng Chá»‰nh Sá»­a Giá» CÃ´ng Thá»§ CÃ´ng</h3>
-              <p className="text-slate-500 text-xs mt-0.5">Admin trá»±c tiáº¿p can thiá»‡p, ghi Ä‘Ã¨ giá» check-in, check-out vÃ  tráº¡ng thÃ¡i cÃ´ng cho tá»«ng nhÃ¢n sá»±.</p>
+              <h3 className="font-bold text-slate-200">Bảng Chỉnh Sửa Giờ Công Thủ Công</h3>
+              <p className="text-slate-500 text-xs mt-0.5">Admin trực tiếp can thiệp, ghi đè giờ check-in, check-out và trạng thái công cho từng nhân sự.</p>
             </div>
             <span className="text-xs text-slate-500 shrink-0 mt-1">
-              {filteredManualLogs.length} / {attendanceHistory.length} báº£n ghi
+              {filteredManualLogs.length} / {attendanceHistory.length} bản ghi
             </span>
           </div>
 
@@ -907,7 +971,7 @@ export default function Admin() {
             <div className="relative flex-1 min-w-[160px]">
               <input
                 type="text"
-                placeholder="TÃ¬m tÃªn nhÃ¢n viÃªn hoáº·c mÃ£ NV..."
+                placeholder="Tìm tên nhân viên hoặc mã NV..."
                 value={manualSearch}
                 onChange={(e) => setManualSearch(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
@@ -916,7 +980,7 @@ export default function Admin() {
                 <button
                   onClick={() => setManualSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
-                >âœ•</button>
+                >✕</button>
               )}
             </div>
 
@@ -926,9 +990,9 @@ export default function Admin() {
               onChange={(e) => setManualMonthVal(e.target.value)}
               className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
             >
-              <option value="">Táº¥t cáº£ thÃ¡ng</option>
+              <option value="">Tất cả tháng</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <option key={m} value={m}>ThÃ¡ng {m}</option>
+                <option key={m} value={m}>Tháng {m}</option>
               ))}
             </select>
 
@@ -938,7 +1002,7 @@ export default function Admin() {
               onChange={(e) => setManualYear(e.target.value)}
               className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
             >
-              <option value="">Táº¥t cáº£ nÄƒm</option>
+              <option value="">Tất cả năm</option>
               {[2024, 2025, 2026, 2027].map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
@@ -950,22 +1014,22 @@ export default function Admin() {
               onChange={(e) => setManualStatus(e.target.value)}
               className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
             >
-              <option value="">Táº¥t cáº£ tráº¡ng thÃ¡i</option>
-              <option value="Há»£p lá»‡">Há»£p lá»‡</option>
-              <option value="Äi muá»™n">Äi muá»™n</option>
-              <option value="Vá» sá»›m">Vá» sá»›m</option>
-              <option value="Nghá»‰ phÃ©p">Nghá»‰ phÃ©p</option>
-              <option value="Váº¯ng máº·t">Váº¯ng máº·t</option>
-              <option value="Nghá»‰ khÃ´ng phÃ©p">Nghá»‰ khÃ´ng phÃ©p</option>
+              <option value="">Tất cả trạng thái</option>
+              <option value="Hợp lệ">Hợp lệ</option>
+              <option value="Đi muộn">Đi muộn</option>
+              <option value="Về sớm">Về sớm</option>
+              <option value="Nghỉ phép">Nghỉ phép</option>
+              <option value="Vắng mặt">Vắng mặt</option>
+              <option value="Nghỉ không phép">Nghỉ không phép</option>
             </select>
 
-            {/* Reset button â€” only show when filters are active */}
+            {/* Reset button — only show when filters are active */}
             {(manualSearch || manualMonthVal || manualYear || manualStatus) && (
               <button
                 onClick={() => { setManualSearch(''); setManualMonth(''); setManualStatus(''); }}
                 className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-xs font-semibold transition border border-slate-750"
               >
-                â†º XÃ³a bá»™ lá»c
+                ↺ Xóa bộ lọc
               </button>
             )}
           </div>
@@ -977,14 +1041,14 @@ export default function Admin() {
             <table className="w-full text-left text-xs border-collapse">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-850">
-                  <th className="px-4 py-3">NhÃ¢n sá»±</th>
-                  <th className="px-4 py-3">NgÃ y</th>
-                  <th className="px-4 py-3">Ca lÃ m</th>
+                  <th className="px-4 py-3">Nhân sự</th>
+                  <th className="px-4 py-3">Ngày</th>
+                  <th className="px-4 py-3">Ca làm</th>
                   <th className="px-4 py-3 text-center">Check-in</th>
                   <th className="px-4 py-3 text-center">Check-out</th>
-                  <th className="px-4 py-3 text-center">Sá»‘ giá»</th>
-                  <th className="px-4 py-3 text-center">Tráº¡ng thÃ¡i</th>
-                  <th className="px-4 py-3 text-right">HÃ nh Ä‘á»™ng</th>
+                  <th className="px-4 py-3 text-center">Số giờ</th>
+                  <th className="px-4 py-3 text-center">Trạng thái</th>
+                  <th className="px-4 py-3 text-right">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850/60 text-slate-300">
@@ -995,15 +1059,15 @@ export default function Admin() {
                         <span className="text-2xl">&#128269;</span>
                         <span className="italic text-xs">
                           {attendanceHistory.length === 0
-                            ? 'ChÆ°a cÃ³ báº£n ghi lá»‹ch sá»­ cháº¥m cÃ´ng nÃ o trong há»‡ thá»‘ng.'
-                            : 'KhÃ´ng tÃ¬m tháº¥y báº£n ghi nÃ o phÃ¹ há»£p bá»™ lá»c Ä‘Ã£ chá»n.'}
+                            ? 'Chưa có bản ghi lịch sử chấm công nào trong hệ thống.'
+                            : 'Không tìm thấy bản ghi nào phù hợp bộ lọc đã chọn.'}
                         </span>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   filteredManualLogs.map((log) => {
-                    const emp = allUsers.find(u => u.employeeId === log.employeeId) || { fullName: 'KhÃ´ng rÃµ', employeeId: log.employeeId };
+                    const emp = allUsers.find(u => u.employeeId === log.employeeId) || { fullName: 'Không rõ', employeeId: log.employeeId };
                     return (
                       <tr key={log.id} className="hover:bg-slate-900/10">
                         <td className="px-4 py-3 font-semibold text-slate-200">
@@ -1017,8 +1081,8 @@ export default function Admin() {
                         <td className="px-4 py-3 text-center font-bold text-slate-200">{log.actualHours}h</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            log.status === 'Há»£p lá»‡' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                            log.status === 'Äi muá»™n' || log.status === 'Vá» sá»›m' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                            log.status === 'Hợp lệ' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                            log.status === 'Đi muộn' || log.status === 'Về sớm' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                             'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                           }`}>
                             {log.status}
@@ -1030,7 +1094,7 @@ export default function Admin() {
                             className="bg-slate-800 hover:bg-teal-500 hover:text-slate-950 text-slate-400 px-3 py-1.5 rounded-xl border border-slate-750 font-bold text-[10px] transition flex items-center gap-1 ml-auto"
                           >
                             <Edit2 className="w-3 h-3" />
-                            Sá»­a giá»
+                            Sửa giờ
                           </button>
                         </td>
                       </tr>
@@ -1054,14 +1118,14 @@ export default function Admin() {
                 <Edit2 className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-200">Äiá»u chá»‰nh Giá» CÃ´ng</h4>
-                <p className="text-[10px] text-slate-500 font-medium">NhÃ¢n viÃªn: {allUsers.find(u => u.employeeId === editingLog.employeeId)?.fullName || editingLog.employeeId} - NgÃ y {editingLog.date}</p>
+                <h4 className="text-sm font-bold text-slate-200">Điều chỉnh Giờ Công</h4>
+                <p className="text-[10px] text-slate-500 font-medium">Nhân viên: {allUsers.find(u => u.employeeId === editingLog.employeeId)?.fullName || editingLog.employeeId} - Ngày {editingLog.date}</p>
               </div>
             </div>
 
             <form onSubmit={handleSaveEditedLog} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400">Giá» Check-in (Clock In)</label>
+                <label className="text-xs font-semibold text-slate-400">Giờ Check-in (Clock In)</label>
                 <input
                   type="time"
                   value={editClockIn}
@@ -1071,7 +1135,7 @@ export default function Admin() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400">Giá» Check-out (Clock Out)</label>
+                <label className="text-xs font-semibold text-slate-400">Giờ Check-out (Clock Out)</label>
                 <input
                   type="time"
                   value={editClockOut}
@@ -1081,16 +1145,16 @@ export default function Admin() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400">Tráº¡ng thÃ¡i cháº¥m cÃ´ng</label>
+                <label className="text-xs font-semibold text-slate-400">Trạng thái chấm công</label>
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-teal-500"
                 >
-                  <option value="Há»£p lá»‡">Há»£p lá»‡</option>
-                  <option value="Äi muá»™n">Äi muá»™n</option>
-                  <option value="Vá» sá»›m">Vá» sá»›m</option>
-                  <option value="Váº¯ng máº·t">Váº¯ng máº·t</option>
+                  <option value="Hợp lệ">Hợp lệ</option>
+                  <option value="Đi muộn">Đi muộn</option>
+                  <option value="Về sớm">Về sớm</option>
+                  <option value="Vắng mặt">Vắng mặt</option>
                 </select>
               </div>
 
@@ -1100,13 +1164,13 @@ export default function Admin() {
                   onClick={() => setEditingLog(null)}
                   className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-350 rounded-xl transition border border-slate-750 font-bold text-xs"
                 >
-                  Há»§y bá»
+                  Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold rounded-xl shadow-lg shadow-teal-500/15 transition text-xs"
                 >
-                  LÆ°u láº¡i
+                  Lưu lại
                 </button>
               </div>
             </form>
@@ -1117,8 +1181,8 @@ export default function Admin() {
       {/* Admin Safety self-demote constraints check */}
       <div className="bg-slate-900/30 border border-slate-855 rounded-3xl p-6 shadow-xl space-y-4">
         <div>
-          <h3 className="font-bold text-slate-200">Cáº¥u hÃ¬nh báº£o vá»‡ tÃ i khoáº£n Admin</h3>
-          <p className="text-slate-400 text-xs mt-1">Há»‡ thá»‘ng an toÃ nGENX PKS cháº·n khÃ´ng cho tÃ i khoáº£n Admin Ä‘ang Ä‘Äƒng nháº­p tá»± thay Ä‘á»•i háº¡ cáº¥p quyá»n cá»§a báº£n thÃ¢n.</p>
+          <h3 className="font-bold text-slate-200">Cấu hình bảo vệ tài khoản Admin</h3>
+          <p className="text-slate-400 text-xs mt-1">Hệ thống an toànGENX PKS chặn không cho tài khoản Admin đang đăng nhập tự thay đổi hạ cấp quyền của bản thân.</p>
         </div>
 
         <div className="bg-slate-950 p-4 rounded-2xl border border-slate-850 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1128,21 +1192,21 @@ export default function Admin() {
             </div>
             <div>
               <h4 className="text-sm font-bold text-slate-200">{currentUser.fullName}</h4>
-              <span className="text-slate-500 text-xs block">TÃ i khoáº£n Admin hiá»‡n hÃ nh ({currentUser.employeeId})</span>
+              <span className="text-slate-500 text-xs block">Tài khoản Admin hiện hành ({currentUser.employeeId})</span>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <span className="text-xs font-semibold text-slate-400 self-center">Vai trÃ² hiá»‡n táº¡i:</span>
+            <span className="text-xs font-semibold text-slate-400 self-center">Vai trò hiện tại:</span>
             <select
               value={currentUser.role}
               onChange={(e) => handleAdminRoleChange(currentUser.employeeId, e.target.value)}
               className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-rose-400 focus:outline-none"
             >
-              <option value="Admin">Admin (KhÃ´ng thá»ƒ Ä‘á»•i)</option>
-              <option value="NhanVien">NhanVien (NhÃ¢n viÃªn)</option>
-              <option value="KeToan">KeToan (Káº¿ toÃ¡n)</option>
-              <option value="HR">HR (NhÃ¢n sá»±)</option>
+              <option value="Admin">Admin (Không thể đổi)</option>
+              <option value="NhanVien">NhanVien (Nhân viên)</option>
+              <option value="KeToan">KeToan (Kế toán)</option>
+              <option value="HR">HR (Nhân sự)</option>
             </select>
           </div>
         </div>
@@ -1157,9 +1221,9 @@ export default function Admin() {
                 <FileX className="w-8 h-8" />
               </div>
               <div>
-                <h4 className="text-base font-bold text-slate-100">LÃ½ do tá»« chá»‘i yÃªu cáº§u</h4>
+                <h4 className="text-base font-bold text-slate-100">Lý do từ chối yêu cầu</h4>
                 <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
-                  Nháº­p lÃ½ do tá»« chá»‘i cá»¥ thá»ƒ cho Ä‘Æ¡n yÃªu cáº§u nÃ y.
+                  Nhập lý do từ chối cụ thể cho đơn yêu cầu này.
                 </p>
               </div>
 
@@ -1167,7 +1231,7 @@ export default function Admin() {
                 <textarea
                   required
                   rows={3}
-                  placeholder="Nháº­p lÃ½ do tá»« chá»‘i..."
+                  placeholder="Nhập lý do từ chối..."
                   value={rejectComment}
                   onChange={(e) => setRejectComment(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 resize-none"
@@ -1179,14 +1243,14 @@ export default function Admin() {
                     onClick={() => setRejectingReqId(null)}
                     className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-xs font-semibold rounded-xl text-slate-355 transition"
                   >
-                    Há»§y bá»
+                    Hủy bỏ
                   </button>
                   <button
                     type="submit"
                     disabled={rejectComment.trim() === ''}
                     className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-550 text-slate-950 font-bold rounded-xl text-xs transition"
                   >
-                    XÃ¡c nháº­n tá»« chá»‘i
+                    Xác nhận từ chối
                   </button>
                 </div>
               </form>
@@ -1206,15 +1270,15 @@ export default function Admin() {
                 <UserPlus className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-200">{editingAccount ? 'Chá»‰nh sá»­a tÃ i khoáº£n' : 'Táº¡o tÃ i khoáº£n má»›i'}</h4>
-                <p className="text-[10px] text-slate-500 font-medium">{editingAccount ? `MÃ£ nhÃ¢n sá»±: ${accountForm.employeeId}` : 'Nháº­p thÃ´ng tin ban Ä‘áº§u cáº¥p phÃ¡t tÃ i khoáº£n'}</p>
+                <h4 className="text-sm font-bold text-slate-200">{editingAccount ? 'Chỉnh sửa tài khoản' : 'Tạo tài khoản mới'}</h4>
+                <p className="text-[10px] text-slate-500 font-medium">{editingAccount ? `Mã nhân sự: ${accountForm.employeeId}` : 'Nhập thông tin ban đầu cấp phát tài khoản'}</p>
               </div>
             </div>
 
             <form onSubmit={handleSaveAccount} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400">MÃ£ nhÃ¢n viÃªn (ID) *</label>
+                  <label className="text-xs font-semibold text-slate-400">Mã nhân viên (ID) *</label>
                   <input
                     type="text"
                     required
@@ -1226,11 +1290,11 @@ export default function Admin() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400">Há» vÃ  tÃªn *</label>
+                  <label className="text-xs font-semibold text-slate-400">Họ và tên *</label>
                   <input
                     type="text"
                     required
-                    placeholder="Nguyá»…n VÄƒn X"
+                    placeholder="Nguyễn Văn X"
                     value={accountForm.fullName}
                     onChange={(e) => setAccountForm(prev => ({ ...prev, fullName: e.target.value }))}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
@@ -1239,7 +1303,7 @@ export default function Admin() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400">Äá»‹a chá»‰ Email *</label>
+                <label className="text-xs font-semibold text-slate-400">Địa chỉ Email *</label>
                 <input
                   type="email"
                   required
@@ -1252,13 +1316,13 @@ export default function Admin() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400">PhÃ²ng ban phÃ¢n bá»•</label>
+                  <label className="text-xs font-semibold text-slate-400">Phòng ban phân bổ</label>
                   <select
                     value={accountForm.department}
                     onChange={(e) => setAccountForm(prev => ({ ...prev, department: e.target.value }))}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
                   >
-                    <option value="">-- Chá»n phÃ²ng ban --</option>
+                    <option value="">-- Chọn phòng ban --</option>
                     {departments.map(dept => (
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
@@ -1266,13 +1330,13 @@ export default function Admin() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400">Chá»©c vá»¥ chuyÃªn mÃ´n</label>
+                  <label className="text-xs font-semibold text-slate-400">Chức vụ chuyên môn</label>
                   <select
                     value={accountForm.position}
                     onChange={(e) => setAccountForm(prev => ({ ...prev, position: e.target.value }))}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
                   >
-                    <option value="">-- Chá»n chá»©c vá»¥ --</option>
+                    <option value="">-- Chọn chức vụ --</option>
                     {positions.map(pos => (
                       <option key={pos} value={pos}>{pos}</option>
                     ))}
@@ -1281,16 +1345,16 @@ export default function Admin() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400">Vai trÃ² phÃ¢n quyá»n há»‡ thá»‘ng</label>
+                <label className="text-xs font-semibold text-slate-400">Vai trò phân quyền hệ thống</label>
                 <select
                   value={accountForm.role}
                   onChange={(e) => setAccountForm(prev => ({ ...prev, role: e.target.value }))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
                 >
-                  <option value="NhanVien">NhanVien (NhÃ¢n viÃªn)</option>
-                  <option value="KeToan">KeToan (Káº¿ toÃ¡n)</option>
-                  <option value="HR">HR (NhÃ¢n sá»±)</option>
-                  <option value="Admin">Admin (Quáº£n trá»‹ há»‡ thá»‘ng)</option>
+                  <option value="NhanVien">NhanVien (Nhân viên)</option>
+                  <option value="KeToan">KeToan (Kế toán)</option>
+                  <option value="HR">HR (Nhân sự)</option>
+                  <option value="Admin">Admin (Quản trị hệ thống)</option>
                 </select>
               </div>
 
@@ -1300,13 +1364,13 @@ export default function Admin() {
                   onClick={() => setIsAccountModalOpen(false)}
                   className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-350 rounded-xl transition border border-slate-750 font-bold text-xs"
                 >
-                  Há»§y bá»
+                  Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold rounded-xl shadow-lg shadow-teal-500/15 transition text-xs"
                 >
-                  LÆ°u láº¡i
+                  Lưu lại
                 </button>
               </div>
             </form>

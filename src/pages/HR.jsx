@@ -12,6 +12,52 @@ export default function HR() {
   const [selectedPos, setSelectedPos] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // HR Filters State
+  const [hrSearch, setHrSearch] = useState('');
+  const [hrDept, setHrDept] = useState('');
+  const [hrRole, setHrRole] = useState('');
+  const [hrContractStatus, setHrContractStatus] = useState('');
+
+  // Helper to calculate contract status relative to simulated current date 2026-07-02
+  const getContractStatus = (expiryDate) => {
+    if (expiryDate === 'Vô thời hạn' || !expiryDate) {
+      return { label: 'Vô thời hạn', class: 'text-slate-400 bg-slate-800/40 border border-slate-700/50', key: 'indefinite' };
+    }
+    
+    const today = new Date('2026-07-02');
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return { label: `Hết hạn (${expiryDate})`, class: 'text-rose-400 bg-rose-500/10 border border-rose-500/20', key: 'expired' };
+    } else if (diffDays <= 60) {
+      return { label: `Sắp hết hạn (${expiryDate})`, class: 'text-amber-400 bg-amber-500/10 border border-amber-500/20 animate-pulse', key: 'near_expiry' };
+    } else {
+      return { label: expiryDate, class: 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20', key: 'active' };
+    }
+  };
+
+  // Filtered users for HR Table
+  const filteredHRUsers = allUsers.filter(user => {
+    const q = hrSearch.toLowerCase();
+    const matchSearch = !hrSearch ||
+      user.fullName.toLowerCase().includes(q) ||
+      user.employeeId.toLowerCase().includes(q);
+    const matchDept = !hrDept || user.department === hrDept;
+    const matchRole = !hrRole || user.role === hrRole;
+    
+    let matchContract = true;
+    if (hrContractStatus) {
+      const status = getContractStatus(user.contractExpiry);
+      if (hrContractStatus === 'het_han' && status.key !== 'expired') matchContract = false;
+      if (hrContractStatus === 'sap_het_han' && status.key !== 'near_expiry') matchContract = false;
+      if (hrContractStatus === 'con_han' && (status.key !== 'active' && status.key !== 'indefinite')) matchContract = false;
+    }
+    
+    return matchSearch && matchDept && matchRole && matchContract;
+  });
+
   const handleEditClick = (user) => {
     setEditingUserId(user.employeeId);
     setSelectedRole(user.role);
@@ -107,11 +153,57 @@ export default function HR() {
           </div>
         </div>
       </div>
-
       {/* Main HR Management Table */}
       <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">
         <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20">
-          <h3 className="font-bold text-slate-200">Danh sách & Phân quyền Nhân sự</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-slate-200">Danh sách & Phân quyền Nhân sự</h3>
+              <p className="text-slate-500 text-xs mt-0.5">Quản lý chức vụ, phòng ban, phân quyền và theo dõi thời hạn hợp đồng lao động.</p>
+            </div>
+            <span className="text-xs text-slate-500 shrink-0">{filteredHRUsers.length} / {allUsers.length} nhân viên</span>
+          </div>
+          {/* Filters Bar */}
+          <div className="mt-3.5 flex flex-wrap gap-2.5">
+            <div className="relative flex-1 min-w-[160px] max-w-xs">
+              <input
+                type="text"
+                placeholder="Tìm tên / mã NV..."
+                value={hrSearch}
+                onChange={(e) => setHrSearch(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+              />
+              {hrSearch && <button onClick={() => setHrSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">✕</button>}
+            </div>
+            <select value={hrDept} onChange={(e) => setHrDept(e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500">
+              <option value="">Tất cả phòng ban</option>
+              {departments.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+            <select value={hrRole} onChange={(e) => setHrRole(e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500">
+              <option value="">Tất cả vai trò</option>
+              <option value="NhanVien">Nhân viên</option>
+              <option value="KeToan">Kế toán</option>
+              <option value="HR">Nhân sự (HR)</option>
+              <option value="Admin">Admin</option>
+            </select>
+            <select value={hrContractStatus} onChange={(e) => setHrContractStatus(e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500">
+              <option value="">Tất cả thời hạn HĐ</option>
+              <option value="con_han">Còn thời hạn</option>
+              <option value="sap_het_han">Sắp hết hạn (≤ 60 ngày)</option>
+              <option value="het_han">Đã hết hạn</option>
+            </select>
+            {(hrSearch || hrDept || hrRole || hrContractStatus) && (
+              <button onClick={() => { setHrSearch(''); setHrDept(''); setHrRole(''); setHrContractStatus(''); }}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-xs font-semibold transition border border-slate-750">
+                ↺ Xóa bộ lọc
+              </button>
+            )}
+          </div>
         </div>
 
         {errorMsg && (
@@ -121,21 +213,24 @@ export default function HR() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-950/40 text-slate-400 font-semibold border-b border-slate-800">
+        <div className="overflow-auto min-h-[300px] max-h-[500px]">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-900">
+              <tr className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
                 <th className="px-6 py-4">Nhân viên</th>
                 <th className="px-6 py-4">Phòng ban</th>
                 <th className="px-6 py-4">Chức vụ (Position)</th>
                 <th className="px-6 py-4">Vai trò (Role)</th>
                 <th className="px-6 py-4">Liên hệ (SĐT / Email)</th>
-                <th className="px-6 py-4">Trạng thái hồ sơ</th>
+                <th className="px-6 py-4 text-center">Trạng thái hồ sơ</th>
+                <th className="px-6 py-4 text-center">Thời hạn HĐ</th>
                 <th className="px-6 py-4 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-850/80">
-              {allUsers.map((user) => (
+            <tbody className="divide-y divide-slate-850/80 text-slate-300">
+              {filteredHRUsers.length === 0 ? (
+                <tr><td colSpan="8" className="px-6 py-10 text-center text-slate-500 italic">Không tìm thấy nhân sự phù hợp.</td></tr>
+              ) : filteredHRUsers.map((user) => (
                 <tr key={user.employeeId} className="hover:bg-slate-900/10 transition duration-150">
                   {/* Employee Name */}
                   <td className="px-6 py-4">
@@ -217,16 +312,23 @@ export default function HR() {
                   </td>
 
                   {/* Profile completeness status */}
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-center">
                     {user.isProfileComplete ? (
-                      <span className="text-emerald-400 text-xs font-semibold flex items-center gap-1">
+                      <span className="text-emerald-400 text-xs font-semibold flex items-center justify-center gap-1">
                         <UserCheck className="w-4 h-4" /> Đã hoàn thiện
                       </span>
                     ) : (
-                      <span className="text-amber-500 text-xs font-semibold flex items-center gap-1">
-                        <AlertTriangle className="w-4 h-4" /> Thiếu thông tin
+                      <span className="text-amber-500 text-xs font-semibold flex items-center justify-center gap-1">
+                        <AlertTriangle className="w-4 h-4 animate-pulse" /> Thiếu thông tin
                       </span>
                     )}
+                  </td>
+
+                  {/* Contract Expiry Status */}
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${getContractStatus(user.contractExpiry).class}`}>
+                      {getContractStatus(user.contractExpiry).label}
+                    </span>
                   </td>
 
                   {/* Actions */}
@@ -234,9 +336,9 @@ export default function HR() {
                     {!user.isProfileComplete && (
                       <button
                         onClick={() => handleApproveProfile(user)}
-                        className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 rounded-lg text-xs font-bold transition border border-emerald-500/20 hover:border-transparent"
+                        className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 rounded-lg text-xs font-bold transition border border-emerald-500/20 hover:border-transparent animate-pulse"
                       >
-                        Kích hoạt tài khoản
+                        Kích hoạt
                       </button>
                     )}
 

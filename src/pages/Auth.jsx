@@ -4,7 +4,7 @@ import { ShieldCheck, Mail, Lock, User, CheckCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function Auth() {
-  const { setIsLoggedIn, setCurrentUser, setAllUsers, pushLog, showDialog } = useApp();
+  const { setIsLoggedIn, setCurrentUser, allUsers, setAllUsers, pushLog, showDialog } = useApp();
   
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
@@ -28,9 +28,17 @@ export default function Auth() {
     // Simulate API check
     pushLog(`Thực hiện đăng nhập cho email: ${loginEmail}`);
     
+    const existingUser = allUsers.find(u => u.email.toLowerCase() === loginEmail.toLowerCase().trim());
+    if (existingUser && existingUser.isLocked) {
+      setErrorMsg('Tài khoản của bạn đã bị khóa bởi Quản trị viên hệ thống.');
+      pushLog(`Đăng nhập thất bại: Tài khoản của ${existingUser.fullName} (${existingUser.employeeId}) đang bị khóa`, 'error');
+      return;
+    }
+    
     // Check if it's one of the preset accounts
-    let matchedUser = null;
-    if (loginEmail === 'nva@genxpks.com') {
+    let matchedUser = existingUser;
+    if (!matchedUser) {
+      if (loginEmail === 'nva@genxpks.com') {
       matchedUser = {
         fullName: 'Nguyễn Văn A',
         email: 'nva@genxpks.com',
@@ -108,7 +116,8 @@ export default function Auth() {
         isProfileComplete: false
       };
     }
-    
+  }
+
     setCurrentUser(matchedUser);
     setIsLoggedIn(true);
     pushLog(`Đăng nhập thành công: ${matchedUser.fullName} (${matchedUser.role})`, 'success');

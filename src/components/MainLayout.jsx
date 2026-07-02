@@ -12,7 +12,9 @@ import {
   MapPin,
   Menu,
   Bell,
-  UserCheck
+  UserCheck,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function MainLayout({ children }) {
@@ -25,7 +27,9 @@ export default function MainLayout({ children }) {
     gpsWithinRange,
     notifications,
     setNotifications,
-    showDialog
+    showDialog,
+    undoToast,
+    setUndoToast
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -51,8 +55,8 @@ export default function MainLayout({ children }) {
     { name: 'Dashboard Chấm công', path: '/dashboard', icon: LayoutDashboard, roles: ['NhanVien', 'KeToan', 'HR', 'Admin'] },
     { name: 'Lịch sử Chấm công', path: '/history', icon: History, roles: ['NhanVien', 'KeToan', 'HR', 'Admin'] },
     { name: 'Quản lý Đơn từ', path: '/requests', icon: FileText, roles: ['NhanVien', 'KeToan', 'HR', 'Admin'] },
-    { name: 'Phân hệ Nhân Sự', path: '/hr', icon: Users, roles: ['HR', 'Admin'] },
-    { name: 'Phân hệ Kế Toán', path: '/accounting', icon: BadgeCent, roles: ['KeToan', 'Admin'] },
+    { name: 'Phân hệ Nhân Sự', path: '/hr', icon: Users, roles: ['HR', 'KeToan', 'Admin'] },
+    { name: 'Phân hệ Kế Toán', path: '/accounting', icon: BadgeCent, roles: ['KeToan', 'HR', 'Admin'] },
     { name: 'Quản Trị Hệ Thống', path: '/admin', icon: Settings, roles: ['Admin'] },
   ];
 
@@ -275,6 +279,73 @@ export default function MainLayout({ children }) {
         <main className="flex-1 overflow-y-auto p-6 relative">
           {children}
         </main>
+      </div>
+      <UndoToast />
+    </div>
+  );
+}
+
+// Subcomponent for Undo Toast Notification
+function UndoToast() {
+  const { undoToast, setUndoToast } = useApp();
+  const [progress, setProgress] = React.useState(100);
+  const [seconds, setSeconds] = React.useState(5);
+
+  React.useEffect(() => {
+    if (!undoToast) return;
+
+    setProgress(100);
+    setSeconds(5);
+
+    let elapsed = 0;
+    const interval = setInterval(() => {
+      elapsed += 100;
+      const pct = Math.max(0, 100 - (elapsed / 5000) * 100);
+      setProgress(pct);
+      setSeconds(Math.ceil((5000 - elapsed) / 1000));
+
+      if (elapsed >= 5000) {
+        clearInterval(interval);
+        if (undoToast.onConfirm) {
+          undoToast.onConfirm();
+        }
+        setUndoToast(null);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [undoToast]);
+
+  if (!undoToast) return null;
+
+  const handleUndoClick = () => {
+    if (undoToast.onUndo) {
+      undoToast.onUndo();
+    }
+    setUndoToast(null);
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[99999] max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 overflow-hidden animate-in slide-in-from-bottom duration-300">
+      <div 
+        className="absolute top-0 left-0 h-1 bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-100 ease-linear"
+        style={{ width: `${progress}%` }}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+          <div className="min-w-0">
+            <p className="text-xs text-slate-300 truncate font-medium">{undoToast.message}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Tự động thực hiện sau {seconds} giây...</p>
+          </div>
+        </div>
+        <button
+          onClick={handleUndoClick}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 hover:text-teal-400 text-slate-300 rounded-xl text-xs font-bold transition border border-slate-700 shrink-0"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Hoàn tác
+        </button>
       </div>
     </div>
   );
