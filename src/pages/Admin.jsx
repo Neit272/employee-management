@@ -158,7 +158,8 @@ export default function Admin() {
           email: accountForm.email.trim(),
           role: accountForm.role,
           department: accountForm.department,
-          position: accountForm.position
+          position: accountForm.position,
+          adminVerificationCode: accountForm.role === 'Admin' ? 'SUPER_ADMIN_2026' : undefined
         });
         pushLog(`Admin cập nhật tài khoản: ${accountForm.fullName} (${accountForm.employeeId})`, 'success');
         showDialog({ title: 'Thành công', message: `Đã cập nhật tài khoản ${accountForm.fullName} thành công.`, type: 'success' });
@@ -175,7 +176,8 @@ export default function Admin() {
         await apiCall(`/admin/users/${accountForm.employeeId.trim()}`, 'PUT', {
           role: accountForm.role,
           department: accountForm.department,
-          position: accountForm.position
+          position: accountForm.position,
+          adminVerificationCode: accountForm.role === 'Admin' ? 'SUPER_ADMIN_2026' : undefined
         });
 
         pushLog(`Admin tạo mới tài khoản: ${accountForm.fullName} (${accountForm.employeeId})`, 'success');
@@ -277,7 +279,7 @@ export default function Admin() {
     }
 
     try {
-      await apiCall(`/admin/users/${lockingUser.employeeId}`, 'PUT', { isBlocked: true });
+      await apiCall(`/admin/users/${lockingUser.employeeId}`, 'PUT', { isBlocked: true, blockReason: finalReason });
       pushLog(`Admin khóa tài khoản: ${lockingUser.fullName} (${lockingUser.employeeId}). Lý do: ${finalReason}`, 'error');
       showDialog({
         title: 'Đã khóa tài khoản',
@@ -949,8 +951,8 @@ export default function Admin() {
                         {user.isBlocked ? 'Bị khóa' : 'Hoạt động'}
                       </span>
                       {user.isBlocked && (
-                        <span className="block text-[9px] text-slate-500 mt-1 max-w-[120px] mx-auto truncate">
-                          Tài khoản bị vô hiệu hóa
+                        <span className="block text-[9px] text-slate-500 mt-1 max-w-[120px] mx-auto truncate" title={user.blockReason}>
+                          {user.blockReason || 'Tài khoản bị vô hiệu hóa'}
                         </span>
                       )}
                     </td>

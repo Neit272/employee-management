@@ -35,6 +35,7 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 // ==========================================
 app.post('/api/auth/register', authController.register);
 app.post('/api/auth/login', authController.login);
+app.post('/api/auth/forgot-password', authController.forgotPassword);
 app.post('/api/auth/reset-password', authController.resetPassword);
 
 // ==========================================
@@ -65,12 +66,12 @@ app.post('/api/documents/upload', requireRole(['KeToan', 'Admin']), documentCont
 app.post('/api/documents/:id/otp-request', requireRole(['KeToan', 'Admin']), documentController.requestDocumentAccess);
 app.post('/api/documents/:id/download', requireRole(['KeToan', 'Admin']), documentController.downloadDocument);
 
-// --- Super Admin Only ---
-app.get('/api/admin/entities', requireRole(['Admin']), adminController.getEntities);
+// --- Super Admin & HR/Accountant Info Sharing ---
+app.get('/api/admin/entities', requireRole(['Admin', 'HR', 'KeToan']), adminController.getEntities);
 app.post('/api/admin/departments', requireRole(['Admin']), adminController.manageDepartments);
 app.post('/api/admin/positions', requireRole(['Admin']), adminController.managePositions);
 
-app.get('/api/admin/users', requireRole(['HR', 'Admin']), adminController.getUsers);
+app.get('/api/admin/users', requireRole(['HR', 'Admin', 'KeToan']), adminController.getUsers);
 app.put('/api/admin/users/:employeeId', requireRole(['HR', 'Admin']), adminController.updateUserAccount);
 
 app.post('/api/admin/manual-override', requireRole(['Admin']), adminController.manualAttendanceOverride);

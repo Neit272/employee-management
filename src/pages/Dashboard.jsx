@@ -32,7 +32,8 @@ export default function Dashboard() {
     allowedDistance,
     gracePeriod,
     setCurrentUser,
-    setAllUsers
+    setAllUsers,
+    requests
   } = useApp();
 
   const formatDate = (dateInput) => {
@@ -234,10 +235,30 @@ export default function Dashboard() {
   };
 
   // Summary statistics widgets calculation
-  const totalWorkedDays = attendanceHistory.filter(h => h.status === 'Hợp lệ').length + 15.5; // Offset mock
-  const totalLateDays = attendanceHistory.filter(h => h.status === 'Đi muộn').length + 1;
-  const remainingLeave = 11.5;
-  const totalOT = 6.5;
+  const myAttendance = attendanceHistory.filter(h => h.employeeId === currentUser.employeeId);
+  const totalWorkedDays = myAttendance.filter(h => h.status === 'Hợp lệ' || h.status === 'Đi muộn' || h.status === 'Về sớm').length;
+  const totalLateDays = myAttendance.filter(h => h.status === 'Đi muộn').length;
+  
+  // Calculate remaining leave: start with 12 days default, subtract days from approved "Xin nghỉ phép" requests
+  const approvedLeaves = requests.filter(r => r.employeeId === currentUser.employeeId && r.type === 'Xin nghỉ phép' && r.status === 'Approved');
+  let leaveDaysUsed = 0;
+  approvedLeaves.forEach(r => {
+    const start = new Date(r.fromDate);
+    const end = new Date(r.toDate);
+    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+      const diffTime = Math.abs(end - start);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      leaveDaysUsed += diffDays;
+    }
+  });
+  const remainingLeave = Math.max(0, 12 - leaveDaysUsed);
+
+  // Calculate OT hours: sum from approved "Đăng ký tăng ca" requests, assuming each request is e.g. 4 hours
+  const approvedOT = requests.filter(r => r.employeeId === currentUser.employeeId && r.type === 'Đăng ký tăng ca' && r.status === 'Approved');
+  let totalOT = 0;
+  approvedOT.forEach(r => {
+    totalOT += 4; // default 4 hours per OT shift
+  });
 
   return (
     <div className="space-y-6">

@@ -29,39 +29,29 @@ export default function Auth() {
   const [forgotConfirmPass, setForgotConfirmPass] = useState('');
   const [sentOtpVal, setSentOtpVal] = useState('123456');
 
-  const handleRequestOtp = (e) => {
+  const handleRequestOtp = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
     const email = forgotEmail.toLowerCase().trim();
 
-    // Verify if email exists in system users
-    const userExists = allUsers.some(u => u.email.toLowerCase() === email) || 
-                       ['admin@genxpks.com'].includes(email);
-                       
-    if (!userExists) {
-      setErrorMsg('Địa chỉ Email không tồn tại trong hệ thống nhân sự!');
-      pushLog(`Yêu cầu khôi phục mật khẩu thất bại: Email ${email} không tồn tại.`, 'error');
-      return;
+    try {
+      pushLog(`Yêu cầu gửi mã OTP khôi phục mật khẩu cho email: ${email}...`);
+      const res = await apiCall('/auth/forgot-password', 'POST', { email });
+      setSentOtpVal(res.otp);
+      setForgotStep(2);
+      setSuccessMsg(`Mã xác thực OTP đã được gửi thành công đến hòm thư: ${email}. (Mã OTP mô phỏng để test là: ${res.otp})`);
+      pushLog(`Simulate OTP: Đã gửi mã khôi phục mật khẩu [${res.otp}] đến hòm thư ${email}.`, 'success');
+    } catch (err) {
+      setErrorMsg(err.message || 'Yêu cầu gửi OTP thất bại.');
+      pushLog(`Yêu cầu khôi phục mật khẩu thất bại: ${err.message}`, 'error');
     }
-
-    // Mock send OTP
-    const mockOtp = String(Math.floor(100000 + Math.random() * 900000));
-    setSentOtpVal(mockOtp);
-    setForgotStep(2);
-    setSuccessMsg(`Mã xác thực OTP đã được gửi thành công đến hòm thư: ${email}. (Mã OTP mô phỏng để test là: ${mockOtp})`);
-    pushLog(`Simulate OTP: Đã gửi mã khôi phục mật khẩu [${mockOtp}] đến hòm thư ${email}.`, 'success');
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
-
-    if (forgotOtp !== sentOtpVal) {
-      setErrorMsg('Mã OTP xác thực không chính xác! Hãy kiểm tra lại hoặc thử lại sau.');
-      return;
-    }
 
     if (forgotNewPass.length < 6) {
       setErrorMsg('Mật khẩu mới phải chứa tối thiểu 6 ký tự.');
@@ -74,8 +64,10 @@ export default function Auth() {
     }
 
     try {
+      pushLog(`Đang gửi yêu cầu đặt lại mật khẩu với mã OTP cho email: ${forgotEmail}...`);
       await apiCall('/auth/reset-password', 'POST', {
         email: forgotEmail.toLowerCase().trim(),
+        otp: forgotOtp,
         newPassword: forgotNewPass
       });
 

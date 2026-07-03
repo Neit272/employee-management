@@ -127,26 +127,65 @@ export const login = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { cccd, phone, address, startDate, department, position, gender, dob } = req.body;
     const employeeId = req.user.employeeId;
+    const { fullName, email, cccd, phone, address, startDate, department, position, gender, dob } = req.body;
 
-    if (!cccd || !phone || !address || !startDate || !department || !gender || !dob) {
-      return res.status(400).json({ error: 'Vui lòng điền đầy đủ tất cả các trường bắt buộc.' });
+    // Fetch existing user to merge fields
+    const userRes = await query('SELECT * FROM users WHERE employee_id = $1', [employeeId]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Không tìm thấy thông tin nhân viên.' });
     }
+    const user = userRes.rows[0];
+
+    const merged = {
+      fullName: fullName !== undefined ? fullName : user.full_name,
+      email: email !== undefined ? email : user.email,
+      cccd: cccd !== undefined ? cccd : user.cccd,
+      phone: phone !== undefined ? phone : user.phone,
+      address: address !== undefined ? address : user.address,
+      startDate: startDate !== undefined ? startDate : user.start_date,
+      department: department !== undefined ? department : user.department,
+      position: position !== undefined ? position : user.position,
+      gender: gender !== undefined ? gender : user.gender,
+      dob: dob !== undefined ? dob : user.dob
+    };
+
+    // Check if profile is complete: all required fields are non-empty
+    const isComplete = !!(
+      merged.fullName && merged.fullName.trim() &&
+      merged.email && merged.email.trim() &&
+      merged.cccd && merged.cccd.trim() &&
+      merged.phone && merged.phone.trim() &&
+      merged.address && merged.address.trim() &&
+      merged.startDate && merged.startDate.trim() &&
+      merged.department && merged.department.trim() &&
+      merged.position && merged.position.trim() &&
+      merged.gender && merged.gender.trim() &&
+      merged.dob && merged.dob.trim()
+    );
 
     const result = await query(`
       UPDATE users 
-      SET cccd = $1, phone = $2, address = $3, start_date = $4, department = $5, position = $6, gender = $7, dob = $8, is_profile_complete = $9
-      WHERE employee_id = $10
+      SET full_name = $1, email = $2, cccd = $3, phone = $4, address = $5, start_date = $6, department = $7, position = $8, gender = $9, dob = $10, is_profile_complete = $11
+      WHERE employee_id = $12
       RETURNING *
-    `, [cccd, phone, address, startDate, department, position || 'Nhân viên chính thức', gender, dob, true, employeeId]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Không tìm thấy thông tin nhân viên.' });
-    }
+    `, [
+      merged.fullName.trim(),
+      merged.email.trim().toLowerCase(),
+      merged.cccd.trim(),
+      merged.phone.trim(),
+      merged.address.trim(),
+      merged.startDate.trim(),
+      merged.department.trim(),
+      merged.position.trim(),
+      merged.gender,
+      merged.dob,
+      isComplete,
+      employeeId
+    ]);
 
     const updatedUser = mapUserToCamel(result.rows[0]);
-    await logSystem(`Cập nhật thông tin hồ sơ bắt buộc thành công cho nhân viên: ${updatedUser.fullName}`, 'success');
+    await logSystem(`Cập nhật thông tin hồ sơ thành công cho nhân viên: ${updatedUser.fullName}`, 'success');
 
     res.json({
       message: 'Cập nhật thông tin thành công!',
@@ -163,11 +202,52 @@ export const getCurrentUser = async (req, res) => {
   res.json({ user: req.user });
 };
 
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Vui lòng cung cấp Email tài khoản.' });
+    }
+
+    const check = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Địa chỉ Email không tồn tại trong hệ thống nhân sự!' });
+    }
+
+    const user = check.rows[0];
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+
+    // Save OTP to users table
+    await query(`
+      UPDATE users 
+      SET document_otp = $1, document_otp_expires_at = $2 
+      WHERE employee_id = $3
+    `, [otp, expiresAt, user.employee_id]);
+
+    await logSystem(`Yêu cầu đặt lại mật khẩu cho email: ${email}. Đã gửi mã OTP.`, 'info');
+
+    // Send email with OTP code
+    const emailBody = `Chào ${user.full_name},\n\nMã OTP khôi phục mật khẩu tài khoản GENX PKS của bạn là: ${otp}.\nMã này có hiệu lực trong vòng 5 phút.\n\nTrân trọng,\nHệ thống bảo mật GENX PKS.`;
+    await sendEmailNotification(email, 'Mã OTP khôi phục mật khẩu tài khoản GENX PKS', emailBody);
+
+    res.json({
+      message: 'Mã OTP khôi phục mật khẩu đã được gửi thành công!',
+      otp: otp // Return for client simulation display
+    });
+  } catch (error) {
+    console.error('Lỗi API Forgot Password:', error);
+    res.status(500).json({ error: 'Lỗi hệ thống khi gửi mã khôi phục mật khẩu.' });
+  }
+};
+
 export const resetPassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
-    if (!email || !newPassword) {
-      return res.status(400).json({ error: 'Thiếu thông tin Email hoặc Mật khẩu mới.' });
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: 'Thiếu thông tin Email, mã OTP hoặc Mật khẩu mới.' });
     }
 
     const check = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
@@ -175,7 +255,20 @@ export const resetPassword = async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy Email tài khoản cần đặt lại mật khẩu.' });
     }
 
-    await query('UPDATE users SET password = $1 WHERE LOWER(email) = LOWER($2)', [newPassword, email]);
+    const user = check.rows[0];
+
+    if (!user.document_otp || user.document_otp !== otp) {
+      return res.status(400).json({ error: 'Mã xác nhận OTP 6 số không chính xác.' });
+    }
+
+    if (new Date() > new Date(user.document_otp_expires_at)) {
+      // Clear expired OTP
+      await query("UPDATE users SET document_otp = '', document_otp_expires_at = NULL WHERE employee_id = $1", [user.employee_id]);
+      return res.status(400).json({ error: 'Mã OTP khôi phục mật khẩu đã hết hiệu lực (Quá 5 phút).' });
+    }
+
+    // Reset OTP upon verification success and update password
+    await query("UPDATE users SET password = $1, document_otp = '', document_otp_expires_at = NULL WHERE employee_id = $2", [newPassword, user.employee_id]);
     await logSystem(`Đặt lại mật khẩu thành công cho tài khoản email: ${email}`, 'success');
 
     res.json({ message: 'Đặt lại mật khẩu thành công!' });

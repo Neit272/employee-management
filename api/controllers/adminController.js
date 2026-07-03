@@ -112,7 +112,7 @@ export const getUsers = async (req, res) => {
 export const updateUserAccount = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const { role, department, position, isBlocked, fullName, email, phone, cccd, dob, gender, address, startDate, isProfileComplete, contractExpiry, adminVerificationCode } = req.body;
+    const { role, department, position, isBlocked, blockReason, fullName, email, phone, cccd, dob, gender, address, startDate, isProfileComplete, contractExpiry, adminVerificationCode } = req.body;
     const currentUser = req.user;
 
     const userRes = await query('SELECT * FROM users WHERE employee_id = $1', [employeeId]);
@@ -122,12 +122,28 @@ export const updateUserAccount = async (req, res) => {
 
     const user = mapUserToCamel(userRes.rows[0]);
 
-    // Safety Check: HR cannot elevate anyone to Admin
+    const getRoleLevel = (r) => {
+      if (r === 'Admin') return 3;
+      if (r === 'HR' || r === 'KeToan') return 2;
+      return 1;
+    };
+
+    // 1. HR cannot edit Admin accounts
+    if (currentUser.role === 'HR' && user.role === 'Admin') {
+      return res.status(403).json({ error: 'Thẩm quyền thất bại: Nhân sự (HR) không được phép thay đổi thông tin hay vai trò của Admin.' });
+    }
+
+    // 2. HR cannot assign Admin role to others
     if (currentUser.role === 'HR' && role === 'Admin') {
       return res.status(403).json({ error: 'Thẩm quyền thất bại: Nhân sự (HR) không có quyền cấp vai trò Quản trị viên (Admin).' });
     }
 
-    // Safety Check: Admin cannot self-demote or self-block
+    // 3. HR cannot downgrade another HR or KeToan (level 2) to NhanVien (level 1)
+    if (currentUser.role === 'HR' && getRoleLevel(user.role) === 2 && role && getRoleLevel(role) < 2) {
+      return res.status(403).json({ error: 'Thẩm quyền thất bại: Nhân sự (HR) không được phép hạ cấp vai trò của nhân sự quản lý ngang hàng (HR/Kế toán) xuống cấp Nhân viên.' });
+    }
+
+    // 4. Admin cannot self-demote or self-block
     if (employeeId === currentUser.employeeId) {
       if (role && role !== 'Admin') {
         return res.status(400).json({ error: 'Lỗi bảo mật tối cao: Bạn không được tự hạ quyền Quản trị (Admin) của bản thân.' });
@@ -135,6 +151,11 @@ export const updateUserAccount = async (req, res) => {
       if (isBlocked === true) {
         return res.status(400).json({ error: 'Lỗi bảo mật tối cao: Bạn không được phép khóa tài khoản Admin của chính bản thân.' });
       }
+    }
+
+    // 5. Admin cannot demote another Admin
+    if (user.role === 'Admin' && role && role !== 'Admin') {
+      return res.status(400).json({ error: 'Lỗi bảo mật tối cao: Bạn không được phép hạ quyền của các tài khoản Admin khác.' });
     }
 
     // High level Admin code verification check
@@ -150,6 +171,7 @@ export const updateUserAccount = async (req, res) => {
     const updatedDept          = department    !== undefined ? department    : user.department;
     const updatedPos           = position      !== undefined ? position      : user.position;
     const updatedBlocked       = isBlocked     !== undefined ? isBlocked     : user.isBlocked;
+    const updatedBlockReason   = blockReason   !== undefined ? blockReason   : user.blockReason;
     const updatedPhone         = phone         !== undefined ? phone         : user.phone;
     const updatedCccd          = cccd          !== undefined ? cccd          : user.cccd;
     const updatedDob           = dob           !== undefined ? dob           : user.dob;
@@ -163,13 +185,13 @@ export const updateUserAccount = async (req, res) => {
       UPDATE users 
       SET full_name = $1, email = $2, role = $3, department = $4, position = $5, is_blocked = $6,
           phone = $7, cccd = $8, dob = $9, gender = $10, address = $11, start_date = $12,
-          is_profile_complete = $13, contract_expiry = $14
-      WHERE employee_id = $15
+          is_profile_complete = $13, contract_expiry = $14, block_reason = $15
+      WHERE employee_id = $16
       RETURNING *
     `, [
       updatedFullName, updatedEmail, updatedRole, updatedDept, updatedPos, updatedBlocked,
       updatedPhone, updatedCccd, updatedDob, updatedGender, updatedAddress, updatedStartDate,
-      updatedProfileComplete, updatedContractExpiry, employeeId
+      updatedProfileComplete, updatedContractExpiry, updatedBlockReason, employeeId
     ]);
 
     res.json({

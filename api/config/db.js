@@ -50,6 +50,11 @@ const initDDL = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS contract_expiry VARCHAR(50) DEFAULT 'Vô thời hạn'
     `);
 
+    // Migrate: add block_reason column if it doesn't exist
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS block_reason VARCHAR(255) DEFAULT ''
+    `);
+
     // 2. Attendance Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS attendance (
@@ -175,6 +180,26 @@ const initDDL = async () => {
         true
       ]);
       console.log('🌱 Seeded default admin user.');
+    }
+
+    // Seed Documents if empty
+    const docCheck = await client.query('SELECT COUNT(*) FROM documents');
+    if (parseInt(docCheck.rows[0].count, 10) === 0) {
+      const defaultDocs = [
+        { name: 'HĐLĐ_Lê_Văn_C_Giám_Đốc_Nhân_Sự.pdf', employee_id: 'NV003', upload_date: '2024-11-01 09:00', type: 'Hợp đồng lao động', path: 'data:application/pdf;base64,JVBERi0xLjQKJ...', is_core: true },
+        { name: 'HĐMB_Thiết_Bị_Nhà_Xưởng_GENX_2026.pdf', employee_id: 'NV002', upload_date: '2026-03-12 15:30', type: 'Báo cáo tài chính', path: 'data:application/pdf;base64,JVBERi0xLjQKJ...', is_core: true },
+        { name: 'Báo_Cáo_Kiểm_Toán_Độc_Lập_GENXPKS_2025.pdf', employee_id: 'NV002', upload_date: '2026-01-20 10:45', type: 'Báo cáo tài chính', path: 'data:application/pdf;base64,JVBERi0xLjQKJ...', is_core: true },
+        { name: 'Hợp đồng lao động Nguyễn Văn A.pdf', employee_id: 'NV001', upload_date: '2026-01-15 09:30', type: 'Hợp đồng lao động', path: 'data:application/pdf;base64,JVBERi0xLjQKJ...', is_core: false },
+        { name: 'Báo cáo thuế Q1-2026.pdf', employee_id: 'NV002', upload_date: '2026-04-10 14:15', type: 'Báo cáo tài chính', path: 'data:application/pdf;base64,JVBERi0xLjQKJ...', is_core: false },
+        { name: 'Thỏa thuận bảo mật NDA.pdf', employee_id: 'NV001', upload_date: '2026-01-15 10:00', type: 'Cam kết bảo mật', path: 'data:application/pdf;base64,JVBERi0xLjQKJ...', is_core: false }
+      ];
+      for (const d of defaultDocs) {
+        await client.query(`
+          INSERT INTO documents (name, employee_id, upload_date, type, path, is_core)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [d.name, d.employee_id, d.upload_date, d.type, d.path, d.is_core]);
+      }
+      console.log('🌱 Seeded default documents.');
     }
 
   } catch (err) {

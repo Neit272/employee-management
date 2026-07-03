@@ -18,6 +18,7 @@ export const mapUserToCamel = (row) => {
     dob: row.dob,
     isProfileComplete: row.is_profile_complete,
     isBlocked: row.is_blocked,
+    blockReason: row.block_reason || '',
     contractExpiry: row.contract_expiry || 'Vô thời hạn',
     documentOtp: row.document_otp,
     documentOtpExpiresAt: row.document_otp_expires_at
@@ -43,10 +44,32 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });
     }
 
-    const matchedUser = mapUserToCamel(result.rows[0]);
+    const row = result.rows[0];
+
+    // Self-healing check for profile completeness status
+    if (row && !row.is_profile_complete) {
+      const isComplete = !!(
+        row.full_name && row.full_name.trim() &&
+        row.email && row.email.trim() &&
+        row.cccd && row.cccd.trim() &&
+        row.phone && row.phone.trim() &&
+        row.address && row.address.trim() &&
+        row.start_date && row.start_date.trim() &&
+        row.department && row.department.trim() &&
+        row.position && row.position.trim() &&
+        row.gender && row.gender.trim() &&
+        row.dob && row.dob.trim()
+      );
+      if (isComplete) {
+        await query('UPDATE users SET is_profile_complete = TRUE WHERE employee_id = $1', [row.employee_id]);
+        row.is_profile_complete = true;
+      }
+    }
+
+    const matchedUser = mapUserToCamel(row);
 
     if (matchedUser.isBlocked) {
-      return res.status(403).json({ error: 'Tài khoản của bạn đã bị khóa bởi Quản trị viên.' });
+      return res.status(403).json({ error: `Tài khoản của bạn đã bị khóa bởi Quản trị viên. Lý do: ${matchedUser.blockReason || 'Không có lý do cụ thể'}` });
     }
 
     req.user = matchedUser;

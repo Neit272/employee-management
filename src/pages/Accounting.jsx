@@ -18,13 +18,6 @@ export default function Accounting() {
     syncFromBackend
   } = useApp();
 
-  // Core folders sensitive contracts mock list
-  const coreContracts = [
-    { id: 'c1', name: 'HĐLĐ_Lê_Văn_C_Giám_Đốc_Nhân_Sự.pdf', date: '2024-11-01', size: '2.4 MB', uploaderId: 'NV003', uploadDateTime: '2024-11-01 09:00', type: 'Hợp đồng lao động' },
-    { id: 'c2', name: 'HĐMB_Thiết_Bị_Nhà_Xưởng_GENX_2026.pdf', date: '2026-03-12', size: '5.8 MB', uploaderId: 'NV002', uploadDateTime: '2026-03-12 15:30', type: 'Báo cáo tài chính' },
-    { id: 'c3', name: 'Báo_Cáo_Kiểm_Toán_Độc_Lập_GENXPKS_2025.pdf', date: '2026-01-20', size: '12.4 MB', uploaderId: 'NV002', uploadDateTime: '2026-01-20 10:45', type: 'Báo cáo tài chính' }
-  ];
-
   // Month/Year filter for attendance summary
   const now = new Date();
   const [summaryMonth, setSummaryMonth] = useState(now.getMonth() + 1);
@@ -40,9 +33,10 @@ export default function Accounting() {
   const [coreCategoryFilter, setCoreCategoryFilter] = useState('');
 
   // Filtered core folder contracts
-  const filteredCoreContracts = coreContracts.filter(doc => {
+  const filteredCoreContracts = documents.filter(doc => {
+    if (!doc.isCore) return false;
     const q = coreSearch.toLowerCase().trim();
-    const matchSearch = !coreSearch || doc.name.toLowerCase().includes(q) || doc.uploaderId.toLowerCase().includes(q);
+    const matchSearch = !coreSearch || doc.name.toLowerCase().includes(q) || doc.employeeId.toLowerCase().includes(q);
     const matchCategory = !coreCategoryFilter || doc.type === coreCategoryFilter;
     return matchSearch && matchCategory;
   });
@@ -110,8 +104,9 @@ export default function Accounting() {
     }
   };
 
-  // Filtered documents for accountant view
+  // Filtered documents for accountant view (excluding core documents)
   const filteredDocuments = documents.filter(doc => {
+    if (doc.isCore) return false;
     const q = docSearch.toLowerCase();
     const matchSearch = !docSearch ||
       doc.name.toLowerCase().includes(q) ||
@@ -487,20 +482,13 @@ export default function Accounting() {
                         <FileText className="w-4 h-4 text-rose-400 shrink-0" />
                         {doc.name}
                       </td>
-                      <td className="px-6 py-3.5 text-center font-mono text-slate-400">{doc.uploaderId}</td>
-                      <td className="px-6 py-3.5 text-slate-400">{formatDateTime(doc.uploadDateTime)}</td>
+                      <td className="px-6 py-3.5 text-center font-mono text-slate-400">{doc.employeeId}</td>
+                      <td className="px-6 py-3.5 text-slate-400">{formatDateTime(doc.uploadDate)}</td>
                       <td className="px-6 py-3.5 text-slate-350 font-semibold">{doc.type}</td>
-                      <td className="px-6 py-3.5 text-center font-mono text-slate-400">{doc.size}</td>
+                      <td className="px-6 py-3.5 text-center font-mono text-slate-400">{doc.size || '2.4 MB'}</td>
                       <td className="px-6 py-3.5 text-right">
                         <button
-                          onClick={() => {
-                            pushLog(`Tải xuống tài liệu Core: ${doc.name}`, 'success');
-                            showDialog({
-                              title: 'Tải xuống tài liệu',
-                              message: `Đang khởi động tải xuống tệp tin bảo mật: ${doc.name}`,
-                              type: 'success'
-                            });
-                          }}
+                          onClick={() => trigger2FA(doc.id)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500 hover:text-slate-950 text-rose-400 rounded-xl text-xs font-bold transition border border-rose-500/20"
                         >
                           <Download className="w-3.5 h-3.5" /> Tải về
