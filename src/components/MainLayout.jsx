@@ -14,7 +14,9 @@ import {
   Bell,
   UserCheck,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export default function MainLayout({ children }) {
@@ -29,7 +31,9 @@ export default function MainLayout({ children }) {
     setNotifications,
     showDialog,
     undoToast,
-    setUndoToast
+    setUndoToast,
+    theme,
+    setTheme
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -232,6 +236,15 @@ export default function MainLayout({ children }) {
                 <span className="hidden sm:inline">{gpsWithinRange ? 'Within Range' : 'Out of Geofence'}</span>
               </div>
             </div>
+
+            {/* Theme Toggle (Light/Dark) */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
+              title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-5 h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
+            </button>
 
             {/* Notification Bell */}
             <div className="relative">

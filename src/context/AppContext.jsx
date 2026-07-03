@@ -281,6 +281,20 @@ export const AppProvider = ({ children }) => {
   const [allowedWifiIp, setAllowedWifiIp] = useState('192.168.1.100');
   const [allowedDistance, setAllowedDistance] = useState(100);
   const [gracePeriod, setGracePeriod] = useState(10);
+
+  // Theme configuration (light/dark)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
   
   // Real time punch state for active user
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -525,7 +539,9 @@ export const AppProvider = ({ children }) => {
         allowedDistance,
         setAllowedDistance,
         gracePeriod,
-        setGracePeriod
+        setGracePeriod,
+        theme,
+        setTheme
       }}
     >
       {children}

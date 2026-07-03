@@ -105,10 +105,30 @@ export default function HR() {
     setErrorMsg('');
     const editingUser = allUsers.find(u => u.employeeId === userId);
 
-    // Safeguard Constraint check: HR cannot assign Admin role to others
+    const getRoleLevel = (r) => {
+      if (r === 'Admin') return 3;
+      if (r === 'HR' || r === 'KeToan') return 2;
+      return 1;
+    };
+
+    // 1. HR cannot edit Admin accounts
+    if (currentUser.role === 'HR' && editingUser.role === 'Admin') {
+      setErrorMsg('Thẩm quyền thất bại: Nhân sự (HR) không được phép thay đổi thông tin hay vai trò của Admin.');
+      pushLog(`HR ${currentUser.fullName} cố gắng chỉnh sửa tài khoản Admin ${editingUser.fullName} bị chặn.`, 'error');
+      return;
+    }
+
+    // 2. HR cannot assign Admin role to others
     if (currentUser.role === 'HR' && selectedRole === 'Admin') {
       setErrorMsg('Thẩm quyền thất bại: Nhân sự (HR) không có quyền cấp vai trò Quản trị viên (Admin).');
       pushLog(`HR ${currentUser.fullName} cố gắng phân bổ vai trò Admin cho ${editingUser.fullName} bị chặn.`, 'error');
+      return;
+    }
+
+    // 3. HR cannot downgrade another HR or KeToan (level 2) to NhanVien (level 1)
+    if (currentUser.role === 'HR' && getRoleLevel(editingUser.role) === 2 && getRoleLevel(selectedRole) < 2) {
+      setErrorMsg('Thẩm quyền thất bại: Nhân sự (HR) không được phép hạ cấp vai trò của nhân sự quản lý ngang hàng (HR/Kế toán) xuống cấp Nhân viên.');
+      pushLog(`HR ${currentUser.fullName} cố gắng hạ cấp vai trò của ${editingUser.fullName} (${editingUser.role}) xuống ${selectedRole} bị chặn.`, 'error');
       return;
     }
 
@@ -116,13 +136,22 @@ export default function HR() {
 
     setAllUsers(prev => prev.map(u => {
       if (u.employeeId === userId) {
-        return { ...u, role: selectedRole, department: selectedDept, position: selectedPos };
+        return { 
+          ...u, 
+          role: currentUser.role === 'HR' ? u.role : selectedRole, 
+          department: selectedDept, 
+          position: selectedPos 
+        };
       }
       return u;
     }));
 
     setEditingUserId(null);
-    pushLog(`Cập nhật thành công nhân sự ${editingUser.fullName}: Phòng ban -> ${selectedDept}, Vai trò -> ${selectedRole}`, 'success');
+    if (currentUser.role === 'HR') {
+      pushLog(`HR cập nhật thành công nhân sự ${editingUser.fullName}: Phòng ban -> ${selectedDept || 'Chưa chọn'}, Chức vụ -> ${selectedPos || 'Chưa chọn'}`, 'success');
+    } else {
+      pushLog(`Cập nhật thành công nhân sự ${editingUser.fullName}: Phòng ban -> ${selectedDept}, Vai trò -> ${selectedRole}`, 'success');
+    }
     confetti({ particleCount: 50, spread: 40 });
   };
 
@@ -352,9 +381,8 @@ export default function HR() {
                     )}
                   </td>
 
-                  {/* Role (Editable Inline) */}
                   <td className="px-6 py-4">
-                    {editingUserId === user.employeeId ? (
+                    {editingUserId === user.employeeId && currentUser.role !== 'HR' ? (
                       <select
                         value={selectedRole}
                         onChange={(e) => setSelectedRole(e.target.value)}

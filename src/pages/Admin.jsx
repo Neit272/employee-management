@@ -29,6 +29,23 @@ export default function Admin() {
     setGracePeriod
   } = useApp();
 
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === 'Vô thời hạn' || dateStr === '—') return dateStr;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    }
+    return dateStr;
+  };
+
+  // Account Locking Reason States
+  const [lockingUser, setLockingUser] = useState(null);
+  const [lockReasonType, setLockReasonType] = useState('Nghỉ việc');
+  const [customLockReason, setCustomLockReason] = useState('');
+
   // User Account Management States
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null); // if null, we are adding new account
@@ -82,6 +99,26 @@ export default function Admin() {
     }
 
     if (editingAccount) {
+      // 1. Admin cannot self-demote
+      if (editingAccount.employeeId === currentUser.employeeId && accountForm.role !== 'Admin') {
+        showDialog({
+          title: 'Từ chối thao tác',
+          message: 'Lỗi quyền hạn: Bạn không thể tự hạ cấp vai trò Admin của chính mình để tránh mất quyền quản trị.',
+          type: 'warning'
+        });
+        return;
+      }
+
+      // 2. Admin cannot demote another Admin
+      if (editingAccount.role === 'Admin' && accountForm.role !== 'Admin') {
+        showDialog({
+          title: 'Từ chối thao tác',
+          message: 'Lỗi quyền hạn: Bạn chỉ có thể sửa đổi phân quyền của các nhân sự dưới quyền Admin. Không thể hạ cấp một tài khoản Admin khác.',
+          type: 'warning'
+        });
+        return;
+      }
+
       // Editing existing
       setAllUsers(prev => prev.map(u => {
         if (u.employeeId === editingAccount.employeeId) {
@@ -164,20 +201,56 @@ export default function Admin() {
       return;
     }
 
-    const newStatus = !user.isLocked;
+    if (user.isLocked) {
+      // Direct unlock
+      setAllUsers(prev => prev.map(u => {
+        if (u.employeeId === user.employeeId) {
+          return { ...u, isLocked: false, lockReason: null };
+        }
+        return u;
+      }));
+      pushLog(`Admin mở khóa tài khoản: ${user.fullName} (${user.employeeId})`, 'success');
+      showDialog({
+        title: 'Thành công',
+        message: `Đã mở khóa tài khoản ${user.fullName} thành công.`,
+        type: 'success'
+      });
+    } else {
+      // Trigger Lock Reason Modal
+      setLockingUser(user);
+      setLockReasonType('Nghỉ việc');
+      setCustomLockReason('');
+    }
+  };
+
+  const handleConfirmLock = () => {
+    if (!lockingUser) return;
+    
+    const finalReason = lockReasonType === 'Khác' ? customLockReason.trim() : lockReasonType;
+    if (lockReasonType === 'Khác' && !finalReason) {
+      showDialog({
+        title: 'Lỗi nhập liệu',
+        message: 'Vui lòng nhập lý do khóa tài khoản chi tiết.',
+        type: 'warning'
+      });
+      return;
+    }
+
     setAllUsers(prev => prev.map(u => {
-      if (u.employeeId === user.employeeId) {
-        return { ...u, isLocked: newStatus };
+      if (u.employeeId === lockingUser.employeeId) {
+        return { ...u, isLocked: true, lockReason: finalReason };
       }
       return u;
     }));
 
-    pushLog(`Admin ${newStatus ? 'khóa' : 'mở khóa'} tài khoản: ${user.fullName} (${user.employeeId})`, newStatus ? 'error' : 'success');
+    pushLog(`Admin khóa tài khoản: ${lockingUser.fullName} (${lockingUser.employeeId}). Lý do: ${finalReason}`, 'error');
     showDialog({
-      title: 'Thành công',
-      message: `Đã ${newStatus ? 'khóa' : 'mở khóa'} tài khoản ${user.fullName} thành công.`,
+      title: 'Đã khóa tài khoản',
+      message: `Tài khoản của ${lockingUser.fullName} đã bị khóa thành công. Lý do: ${finalReason}`,
       type: 'success'
     });
+
+    setLockingUser(null);
   };
 
   // Manual Attendance Edit States
@@ -648,7 +721,7 @@ export default function Admin() {
                   <tr key={req.id} className="hover:bg-slate-900/10 transition duration-150">
                     <td className="px-6 py-4 font-medium text-slate-200">{req.employeeName} <span className="text-slate-500 block text-xs">Mã: {req.employeeId}</span></td>
                     <td className="px-6 py-4 font-semibold text-slate-350">{req.type}</td>
-                    <td className="px-6 py-4 text-slate-400">{req.fromDate === req.toDate ? req.fromDate : `${req.fromDate} - ${req.toDate}`}</td>
+                    <td className="px-6 py-4 text-slate-400">{req.fromDate === req.toDate ? formatDate(req.fromDate) : `${formatDate(req.fromDate)} - ${formatDate(req.toDate)}`}</td>
                     <td className="px-6 py-4 text-slate-400 max-w-xs truncate" title={req.reason}>{req.reason}</td>
                     <td className="px-6 py-4 text-center">
                       {req.status === 'Pending' ? (
@@ -846,6 +919,11 @@ export default function Admin() {
                       }`}>
                         {user.isLocked ? 'Bị khóa' : 'Hoạt động'}
                       </span>
+                      {user.isLocked && user.lockReason && (
+                        <span className="block text-[9px] text-slate-500 mt-1 max-w-[120px] mx-auto truncate" title={user.lockReason}>
+                          Lý do: {user.lockReason}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2.5">
@@ -1229,21 +1307,79 @@ export default function Admin() {
         </div>
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Allowed IP Wifi */}
+             {/* Allowed IP Wifi */}
             <div className="space-y-1.5 bg-slate-950 p-4 rounded-2xl border border-slate-855 flex flex-col justify-between">
               <div>
                 <h4 className="text-xs font-bold text-slate-200">Địa chỉ IP Wifi cho phép</h4>
                 <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
-                  Địa chỉ IP tĩnh hoặc dải mạng WiFi văn phòng cho phép chấm công.
+                  Các địa chỉ IP tĩnh (chi nhánh) được phép chấm công. Nhập IP và nhấn Thêm.
                 </p>
               </div>
-              <input
-                type="text"
-                value={allowedWifiIp}
-                onChange={(e) => setAllowedWifiIp(e.target.value)}
-                className="w-full mt-3.5 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
-                placeholder="Ví dụ: 192.168.1.100"
-              />
+              
+              {/* Chip list of current IPs */}
+              <div className="flex flex-wrap gap-1.5 mt-3.5 min-h-[38px] max-h-24 overflow-y-auto bg-slate-900/40 p-1.5 rounded-xl border border-slate-800/60">
+                {allowedWifiIp.split(',').map(ip => ip.trim()).filter(Boolean).length === 0 ? (
+                  <span className="text-[10px] text-slate-600 italic px-1.5 py-0.5">Chưa cấu hình IP</span>
+                ) : (
+                  allowedWifiIp.split(',').map(ip => ip.trim()).filter(Boolean).map(ip => (
+                    <span key={ip} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 text-[10px] font-semibold">
+                      {ip}
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const nextIps = allowedWifiIp.split(',').map(item => item.trim()).filter(item => item && item !== ip).join(', ');
+                          setAllowedWifiIp(nextIps);
+                        }}
+                        className="hover:text-rose-400 ml-0.5 text-xs font-bold transition-colors"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+
+              {/* Add IP input field */}
+              <div className="flex gap-1.5 mt-3">
+                <input
+                  type="text"
+                  id="new-ip-input"
+                  placeholder="Thêm IP mới..."
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-[11px] text-slate-200 focus:outline-none focus:border-teal-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = e.target.value.trim();
+                      if (val) {
+                        const currentList = allowedWifiIp.split(',').map(item => item.trim()).filter(Boolean);
+                        if (!currentList.includes(val)) {
+                          currentList.push(val);
+                          setAllowedWifiIp(currentList.join(', '));
+                          e.target.value = '';
+                        }
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('new-ip-input');
+                    const val = input ? input.value.trim() : '';
+                    if (val) {
+                      const currentList = allowedWifiIp.split(',').map(item => item.trim()).filter(Boolean);
+                      if (!currentList.includes(val)) {
+                        currentList.push(val);
+                        setAllowedWifiIp(currentList.join(', '));
+                        if (input) input.value = '';
+                      }
+                    }
+                  }}
+                  className="bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold px-3 rounded-xl text-[10px] transition"
+                >
+                  Thêm
+                </button>
+              </div>
             </div>
 
             {/* Allowed GPS distance range */}
@@ -1467,6 +1603,81 @@ export default function Admin() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Account Locking Reason Input Modal */}
+      {lockingUser && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="bg-slate-950 p-6 border-b border-slate-850 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-rose-400" />
+                <h3 className="font-bold text-slate-100">Yêu cầu khóa tài khoản</h3>
+              </div>
+              <button 
+                onClick={() => setLockingUser(null)}
+                className="text-slate-400 hover:text-slate-200 p-1.5 hover:bg-slate-800 rounded-lg transition"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 text-xs">
+              <p className="text-slate-400 leading-relaxed">
+                Bạn đang yêu cầu khóa tài khoản của nhân viên <strong className="text-slate-250 font-semibold">{lockingUser.fullName}</strong> (Mã NV: <strong className="text-slate-250 font-mono">{lockingUser.employeeId}</strong>). 
+                Vui lòng cung cấp lý do khóa tài khoản này:
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-slate-500 block font-bold uppercase text-[10px] tracking-wider">Lý do khóa tài khoản *</label>
+                <select
+                  value={lockReasonType}
+                  onChange={(e) => setLockReasonType(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500 cursor-pointer"
+                >
+                  <option value="Nghỉ việc">Nghỉ việc (Chấm dứt hợp đồng lao động)</option>
+                  <option value="Vi phạm nội quy">Vi phạm nghiêm trọng nội quy công ty</option>
+                  <option value="Tạm ngưng hoạt động">Tạm ngưng công tác / Nghỉ thai sản</option>
+                  <option value="Khác">Khác (Nhập lý do chi tiết dưới đây)</option>
+                </select>
+              </div>
+
+              {lockReasonType === 'Khác' && (
+                <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-150">
+                  <label className="text-slate-500 block font-bold uppercase text-[10px] tracking-wider">Chi tiết lý do khóa khác *</label>
+                  <textarea
+                    required
+                    rows={3}
+                    maxLength={150}
+                    placeholder="Vui lòng nhập lý do khóa chi tiết..."
+                    value={customLockReason}
+                    onChange={(e) => setCustomLockReason(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500 resize-none"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setLockingUser(null)}
+                  className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-350 rounded-xl transition border border-slate-750 font-bold"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmLock}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-slate-950 font-bold rounded-xl shadow-lg shadow-rose-500/15 transition"
+                >
+                  Khóa tài khoản
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

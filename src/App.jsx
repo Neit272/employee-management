@@ -45,7 +45,7 @@ function AppContent() {
 
   return (
     <MainLayout>
-      <div key={currentPath} className="animate-fade-in-up flex-1 flex flex-col min-h-0">
+      <div key={currentPath} className="animate-fade-in flex-1 flex flex-col min-h-0">
         {renderPage()}
       </div>
       
