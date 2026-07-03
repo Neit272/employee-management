@@ -6,9 +6,49 @@ const validateVietnamesePhone = (phone) => {
   return /^(0|84|\+84)(3|5|7|8|9)([0-9]{8})$/.test(cleanPhone);
 };
 
-const validateCccd = (cccd) => {
+const validateVietnameseCccd = (cccd, gender, dob) => {
   if (!cccd) return true;
-  return /^[0-9]{12}$/.test(cccd.trim());
+  const cleanCccd = cccd.trim();
+  if (!/^[0-9]{12}$/.test(cleanCccd)) return false;
+
+  // If gender or dob is missing, we can only validate the 12 digits format
+  if (!gender || !dob) return true;
+
+  // Extract year of birth from dob (expected format: YYYY-MM-DD)
+  const dobParts = dob.split('-');
+  if (dobParts.length < 1) return false;
+  const birthYear = parseInt(dobParts[0], 10);
+  if (isNaN(birthYear)) return false;
+
+  // Extract century and year code
+  const century = Math.floor(birthYear / 100) + 1; // e.g. 1990 -> 20, 2005 -> 21
+  const yearCode = String(birthYear).substring(2, 4); // e.g. "90" or "05"
+
+  // Determine gender digit rules
+  let expectedGenderDigit = -1;
+  const isMale = gender === 'Nam';
+
+  if (century === 20) {
+    expectedGenderDigit = isMale ? 0 : 1;
+  } else if (century === 21) {
+    expectedGenderDigit = isMale ? 2 : 3;
+  } else if (century === 22) {
+    expectedGenderDigit = isMale ? 4 : 5;
+  } else if (century === 23) {
+    expectedGenderDigit = isMale ? 6 : 7;
+  } else if (century === 24) {
+    expectedGenderDigit = isMale ? 8 : 9;
+  }
+
+  // Validate gender/century digit (4th digit, index 3)
+  const actualGenderDigit = parseInt(cleanCccd[3], 10);
+  if (actualGenderDigit !== expectedGenderDigit) return false;
+
+  // Validate year code digits (5th and 6th digits, index 4, 5)
+  const actualYearCode = cleanCccd.substring(4, 6);
+  if (actualYearCode !== yearCode) return false;
+
+  return true;
 };
 
 const mapUserToCamel = (row) => {
@@ -126,18 +166,6 @@ export const updateUserAccount = async (req, res) => {
     const { role, department, position, isBlocked, blockReason, fullName, email, phone, cccd, dob, gender, address, startDate, isProfileComplete, contractExpiry, adminVerificationCode } = req.body;
     const currentUser = req.user;
 
-    if (phone !== undefined && phone !== null && phone.trim() !== '') {
-      if (!validateVietnamesePhone(phone)) {
-        return res.status(400).json({ error: 'Số điện thoại không đúng định dạng Việt Nam (phải gồm 10 chữ số bắt đầu bằng 03, 05, 07, 08, 09).' });
-      }
-    }
-
-    if (cccd !== undefined && cccd !== null && cccd.trim() !== '') {
-      if (!validateCccd(cccd)) {
-        return res.status(400).json({ error: 'Số CCCD không hợp lệ (phải gồm đúng 12 chữ số quốc gia).' });
-      }
-    }
-
     const userRes = await query('SELECT * FROM users WHERE employee_id = $1', [employeeId]);
     if (userRes.rows.length === 0) {
       return res.status(404).json({ error: 'Không tìm thấy tài khoản cần sửa.' });
@@ -203,6 +231,18 @@ export const updateUserAccount = async (req, res) => {
     const updatedStartDate     = startDate     !== undefined ? startDate     : user.startDate;
     const updatedProfileComplete = isProfileComplete !== undefined ? isProfileComplete : user.isProfileComplete;
     const updatedContractExpiry  = contractExpiry    !== undefined ? contractExpiry    : user.contractExpiry;
+
+    if (updatedPhone && updatedPhone.trim() !== '') {
+      if (!validateVietnamesePhone(updatedPhone)) {
+        return res.status(400).json({ error: 'Số điện thoại không đúng định dạng Việt Nam (phải gồm 10 chữ số bắt đầu bằng 03, 05, 07, 08, 09).' });
+      }
+    }
+
+    if (updatedCccd && updatedCccd.trim() !== '') {
+      if (!validateVietnameseCccd(updatedCccd, updatedGender, updatedDob)) {
+        return res.status(400).json({ error: 'Số CCCD không hợp lệ hoặc không khớp với thông tin Giới tính / Ngày sinh.' });
+      }
+    }
 
     const updateRes = await query(`
       UPDATE users 
