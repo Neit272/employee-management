@@ -249,6 +249,7 @@ const initDDL = async () => {
 
   } catch (err) {
     console.error('🔴 Supabase schema initialization error:', err.message);
+    throw err;
   } finally {
     client.release();
   }
@@ -256,12 +257,8 @@ const initDDL = async () => {
 
 export const connectDB = async () => {
   if (isInitialized) return;
-  try {
-    await initDDL();
-    isInitialized = true;
-  } catch (error) {
-    console.error('🔴 Supabase DB connection error:', error.message);
-  }
+  await initDDL();
+  isInitialized = true;
 };
 
 export const query = async (text, params) => {
