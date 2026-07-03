@@ -121,7 +121,7 @@ export const login = async (req, res) => {
 
   } catch (error) {
     console.error('Lỗi API Đăng nhập:', error);
-    res.status(500).json({ error: 'Lỗi hệ thống khi đăng nhập.' });
+    res.status(500).json({ error: `Lỗi hệ thống khi đăng nhập: ${error.message}`, stack: error.stack });
   }
 };
 
