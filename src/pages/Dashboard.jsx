@@ -19,6 +19,7 @@ export default function Dashboard() {
     pushLog,
     isCheckedIn,
     setIsCheckedIn,
+    isSyncing,
     currentShift,
     setCurrentShift,
     attendanceHistory,
@@ -341,9 +342,9 @@ export default function Dashboard() {
           <div className="flex flex-col items-center justify-center shrink-0 w-full md:w-auto">
             <button
               onClick={handlePunch}
-              disabled={punchLoading || (!officeWifi && !gpsWithinRange)}
+              disabled={punchLoading || isSyncing || (!officeWifi && !gpsWithinRange)}
               className={`w-44 h-44 rounded-full flex flex-col items-center justify-center gap-2.5 font-bold transition-all duration-300 transform active:scale-95 border-4 focus:outline-none select-none relative ${
-                punchLoading 
+                punchLoading || isSyncing
                   ? 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed'
                   : !officeWifi || !gpsWithinRange
                     ? 'bg-slate-850 border-slate-800 text-slate-500 cursor-not-allowed'
@@ -352,8 +353,13 @@ export default function Dashboard() {
                       : 'bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 border-emerald-300 text-slate-950 glow-green'
               }`}
             >
-              {punchLoading ? (
-                <div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+              {punchLoading || isSyncing ? (
+                <>
+                  <div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-slate-400 font-semibold tracking-wider mt-1">
+                    {isSyncing ? 'Đang đồng bộ...' : 'Đang xử lý...'}
+                  </span>
+                </>
               ) : !officeWifi || !gpsWithinRange ? (
                 <>
                   <Compass className="w-8 h-8 text-slate-500" />

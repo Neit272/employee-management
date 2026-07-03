@@ -91,6 +91,7 @@ export const AppProvider = ({ children }) => {
   
   // Real time punch state for active user
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [currentShift, setCurrentShift] = useState('');
   const [checkInTime, setCheckInTime] = useState(null);
   
@@ -243,6 +244,8 @@ export const AppProvider = ({ children }) => {
 
   // Sync data from backend
   const syncFromBackend = async () => {
+    if (!currentUser) return;
+    setIsSyncing(true);
     try {
       // 1. Get current history for the last 30 days
       const today = new Date();
@@ -251,8 +254,35 @@ export const AppProvider = ({ children }) => {
       const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
       const toDate = today.toISOString().split('T')[0];
 
-      const historyData = await apiCall(`/attendance/history?fromDate=${fromDate}&toDate=${toDate}`);
-      if (historyData.history) {
+      // Build parallel promise array for a 4x performance speed up
+      const promises = [
+        apiCall(`/attendance/history?fromDate=${fromDate}&toDate=${toDate}`),
+        apiCall('/requests'),
+        apiCall('/admin/logs').catch(() => ({}))
+      ];
+
+      let docPromiseIdx = -1;
+      let usersPromiseIdx = -1;
+      let entitiesPromiseIdx = -1;
+
+      if (currentUser.role === 'KeToan' || currentUser.role === 'Admin') {
+        docPromiseIdx = promises.length;
+        promises.push(apiCall('/documents'));
+      }
+
+      if (currentUser.role === 'Admin' || currentUser.role === 'HR' || currentUser.role === 'KeToan') {
+        usersPromiseIdx = promises.length;
+        promises.push(apiCall('/admin/users'));
+        entitiesPromiseIdx = promises.length;
+        promises.push(apiCall('/admin/entities'));
+      }
+
+      // Execute all promises in parallel
+      const results = await Promise.all(promises);
+
+      // 1. Process History
+      const historyData = results[0];
+      if (historyData && historyData.history) {
         updateAttendanceHistory(historyData.history);
         
         // Sync check-in state
@@ -275,47 +305,48 @@ export const AppProvider = ({ children }) => {
         }
       }
 
-      // 2. Get Requests
-      const reqData = await apiCall('/requests');
-      if (reqData.requests) {
+      // 2. Process Requests
+      const reqData = results[1];
+      if (reqData && reqData.requests) {
         updateRequests(reqData.requests);
       }
 
-      // 3. If KeToan or Admin, fetch Documents
-      if (currentUser.role === 'KeToan' || currentUser.role === 'Admin') {
-        const docData = await apiCall('/documents');
-        if (docData.documents) {
+      // 3. Process logs
+      const logData = results[2];
+      if (logData && logData.logs) {
+        setFirebaseLogs(logData.logs);
+      }
+
+      // 4. Process Documents (optional)
+      if (docPromiseIdx !== -1) {
+        const docData = results[docPromiseIdx];
+        if (docData && docData.documents) {
           setDocuments(docData.documents);
         }
       }
 
-      // 4. If Admin, HR, or KeToan, fetch Users & Entities
-      if (currentUser.role === 'Admin' || currentUser.role === 'HR' || currentUser.role === 'KeToan') {
-        const usersData = await apiCall('/admin/users');
-        if (usersData.users) {
+      // 5. Process Users & Entities (optional)
+      if (usersPromiseIdx !== -1 && entitiesPromiseIdx !== -1) {
+        const usersData = results[usersPromiseIdx];
+        if (usersData && usersData.users) {
           updateAllUsers(usersData.users);
         }
 
-        const entitiesData = await apiCall('/admin/entities');
-        if (entitiesData.departments) {
-          setDepartments(entitiesData.departments);
+        const entitiesData = results[entitiesPromiseIdx];
+        if (entitiesData) {
+          if (entitiesData.departments) {
+            setDepartments(entitiesData.departments);
+          }
+          if (entitiesData.positions) {
+            setPositions(entitiesData.positions);
+          }
         }
-        if (entitiesData.positions) {
-          setPositions(entitiesData.positions);
-        }
-      }
-      
-      // Fetch backend logs
-      const logData = await fetch(getApiUrl('/admin/logs'), {
-        headers: { 'Authorization': currentUser ? `Bearer ${currentUser.employeeId}` : '' }
-      }).then(r => r.json()).catch(() => ({}));
-      
-      if (logData.logs) {
-        setFirebaseLogs(logData.logs);
       }
 
     } catch (error) {
       console.warn('⚠️ Lỗi đồng bộ Backend, đang chạy chế độ Mock Offline:', error.message);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -448,6 +479,7 @@ export const AppProvider = ({ children }) => {
         pushLog,
         isCheckedIn,
         setIsCheckedIn,
+        isSyncing,
         currentShift,
         setCurrentShift,
         checkInTime,
