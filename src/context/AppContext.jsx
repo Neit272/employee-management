@@ -362,7 +362,7 @@ export const AppProvider = ({ children }) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentUser.employeeId}`
+        'Authorization': currentUser ? `Bearer ${currentUser.employeeId}` : ''
       },
       body: JSON.stringify({ text: `[${timeStr}] ${logTypeSymbol} ${message}` })
     }).catch(() => {});
@@ -371,7 +371,7 @@ export const AppProvider = ({ children }) => {
   // Helper for all backend requests
   const apiCall = async (endpoint, method = 'GET', body = null, isMultipart = false) => {
     const headers = {
-      'Authorization': `Bearer ${currentUser.employeeId}`
+      'Authorization': currentUser ? `Bearer ${currentUser.employeeId}` : ''
     };
     if (!isMultipart) {
       headers['Content-Type'] = 'application/json';
@@ -455,7 +455,7 @@ export const AppProvider = ({ children }) => {
       
       // Fetch backend logs
       const logData = await fetch(getApiUrl('/admin/logs'), {
-        headers: { 'Authorization': `Bearer ${currentUser.employeeId}` }
+        headers: { 'Authorization': currentUser ? `Bearer ${currentUser.employeeId}` : '' }
       }).then(r => r.json()).catch(() => ({}));
       
       if (logData.logs) {
@@ -491,6 +491,7 @@ export const AppProvider = ({ children }) => {
 
   // Simulate background activities from other users for real-time vibe
   useEffect(() => {
+    if (!currentUser) return;
     const interval = setInterval(() => {
       const otherUsers = allUsers.filter(u => u.employeeId !== currentUser.employeeId);
       if (otherUsers.length === 0) return;

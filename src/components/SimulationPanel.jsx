@@ -84,7 +84,7 @@ export default function SimulationPanel() {
             Tài khoản Đăng nhập:
           </label>
           <select
-            value={currentUser.employeeId}
+            value={currentUser ? currentUser.employeeId : ''}
             onChange={handleUserChange}
             className="w-full bg-slate-850 border border-slate-700 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-teal-500 transition"
           >
