@@ -9,7 +9,7 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
   // Login Form States
-  const [loginEmail, setLoginEmail] = useState('nva@genxpks.com');
+  const [loginEmail, setLoginEmail] = useState('admin@genxpks.com');
   const [loginPass, setLoginPass] = useState('password123');
   
   // Register Form States

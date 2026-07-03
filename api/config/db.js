@@ -140,111 +140,35 @@ const initDDL = async () => {
     }
 
     // Seed Users if empty
-    const userCheck = await client.query('SELECT COUNT(*) FROM users');
-    if (parseInt(userCheck.rows[0].count, 10) === 0) {
-      const presetUsers = [
-        {
-          fullName: 'Nguyễn Văn A',
-          email: 'nva@genxpks.com',
-          role: 'NhanVien',
-          employeeId: 'NV001',
-          cccd: '012345678912',
-          phone: '0987654321',
-          address: '123 Đường Láng, Hà Nội',
-          startDate: '2025-01-15',
-          department: 'Kỹ thuật',
-          position: 'Nhân viên chính thức',
-          gender: 'Nam',
-          dob: '1998-05-20',
-          isProfileComplete: true
-        },
-        {
-          fullName: 'Trần Thị B',
-          email: 'ttb@genxpks.com',
-          role: 'KeToan',
-          employeeId: 'NV002',
-          cccd: '012345678913',
-          phone: '0976543210',
-          address: '456 Cầu Giấy, Hà Nội',
-          startDate: '2025-02-10',
-          department: 'Kế toán',
-          position: 'Kế toán viên',
-          gender: 'Nữ',
-          dob: '1996-08-15',
-          isProfileComplete: true
-        },
-        {
-          fullName: 'Lê Văn C',
-          email: 'lvc@genxpks.com',
-          role: 'HR',
-          employeeId: 'NV003',
-          cccd: '012345678914',
-          phone: '0965432109',
-          address: '789 Nguyễn Chí Thanh, Hà Nội',
-          startDate: '2024-11-01',
-          department: 'Nhân sự',
-          position: 'Chuyên viên HR',
-          gender: 'Nam',
-          dob: '1995-12-05',
-          isProfileComplete: true
-        },
-        {
-          fullName: 'Phạm Văn D (System Admin)',
-          email: 'admin@genxpks.com',
-          role: 'Admin',
-          employeeId: 'NV000',
-          cccd: '012345678911',
-          phone: '0999999999',
-          address: 'Trụ sở chính GENX PKS',
-          startDate: '2024-01-01',
-          department: 'Hành chính',
-          position: 'Trưởng phòng',
-          gender: 'Nam',
-          dob: '1990-01-01',
-          isProfileComplete: true
-        },
-        {
-          fullName: 'Hoàng Văn E (Thực tập sinh)',
-          email: 'hve@genxpks.com',
-          role: 'NhanVien',
-          employeeId: 'NV004',
-          cccd: '',
-          phone: '',
-          address: '',
-          startDate: '2026-06-01',
-          department: 'Kỹ thuật',
-          position: 'Nhân viên thử việc',
-          gender: '',
-          dob: '',
-          isProfileComplete: false
-        },
-        {
-          fullName: 'Hoàng Thị E',
-          email: 'hte@genxpks.com',
-          role: 'NhanVien',
-          employeeId: 'NV005',
-          cccd: '012345678920',
-          phone: '0912345678',
-          address: '22 Trần Phú, Hà Nội',
-          startDate: '2025-08-01',
-          department: 'Kinh doanh',
-          position: 'Nhân viên chính thức',
-          gender: 'Nữ',
-          dob: '1999-03-10',
-          isProfileComplete: true
-        }
-      ];
+    // First, let's delete any obsolete demo users from the DB if they exist
+    await client.query("DELETE FROM users WHERE email IN ('nva@genxpks.com', 'ttb@genxpks.com', 'lvc@genxpks.com', 'hve@genxpks.com', 'hte@genxpks.com')");
+    await client.query("DELETE FROM attendance WHERE employee_id IN ('NV001', 'NV002', 'NV003', 'NV004', 'NV005')");
+    await client.query("DELETE FROM requests WHERE employee_id IN ('NV001', 'NV002', 'NV003', 'NV004', 'NV005')");
+    await client.query("DELETE FROM documents WHERE employee_id IN ('NV001', 'NV002', 'NV003', 'NV004', 'NV005')");
 
-      for (const u of presetUsers) {
-        await client.query(`
-          INSERT INTO users (
-            employee_id, full_name, email, role, cccd, phone, address, start_date, department, position, gender, dob, is_profile_complete
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        `, [
-          u.employeeId, u.fullName, u.email, u.role, u.cccd, u.phone, u.address, u.startDate, u.department, u.position, u.gender, u.dob, u.isProfileComplete
-        ]);
-      }
-      console.log('🌱 Seeded default users.');
+    const userCheck = await client.query("SELECT COUNT(*) FROM users WHERE email = 'admin@genxpks.com'");
+    if (parseInt(userCheck.rows[0].count, 10) === 0) {
+      await client.query(`
+        INSERT INTO users (
+          employee_id, full_name, email, password, role, cccd, phone, address, start_date, department, position, gender, dob, is_profile_complete
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `, [
+        'NV000',
+        'Phạm Văn D (System Admin)',
+        'admin@genxpks.com',
+        'password123',
+        'Admin',
+        '012345678911',
+        '0999999999',
+        'Trụ sở chính GENX PKS',
+        '2024-01-01',
+        'Hành chính',
+        'Trưởng phòng',
+        'Nam',
+        '1990-01-01',
+        true
+      ]);
+      console.log('🌱 Seeded default admin user.');
     }
 
   } catch (err) {

@@ -216,9 +216,25 @@ const presetUsers = {
 };
 
 export const AppProvider = ({ children }) => {
-  // Current user state
-  const [currentUser, setCurrentUser] = useState(presetUsers.NhanVien);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  // Current user state (Initialize from localStorage to persist login state)
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('genx_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return !!localStorage.getItem('genx_user');
+  });
+
+  // Persist login state changes to localStorage
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('genx_user', JSON.stringify(currentUser));
+      setIsLoggedIn(true);
+    } else {
+      localStorage.removeItem('genx_user');
+      setIsLoggedIn(false);
+    }
+  }, [currentUser]);
 
   // Dynamic entity states
   const [departments, setDepartments] = useState(initialDepartments);
@@ -229,40 +245,7 @@ export const AppProvider = ({ children }) => {
   
   // Custom user collection (for HR management & Admin list)
   const [allUsers, rawSetAllUsers] = useState([
-    { ...presetUsers.NhanVien },
-    { ...presetUsers.KeToan },
-    { ...presetUsers.HR },
-    { ...presetUsers.Admin },
-    {
-      fullName: 'Hoàng Văn E (Thực tập sinh)',
-      email: 'hve@genxpks.com',
-      role: 'NhanVien',
-      employeeId: 'NV004',
-      cccd: '',
-      phone: '',
-      address: '',
-      startDate: '2026-06-01',
-      department: 'Kỹ thuật',
-      position: 'Nhân viên thử việc',
-      gender: '',
-      dob: '',
-      isProfileComplete: false
-    },
-    {
-      fullName: 'Hoàng Thị E',
-      email: 'hte@genxpks.com',
-      role: 'NhanVien',
-      employeeId: 'NV005',
-      cccd: '012345678920',
-      phone: '0912345678',
-      address: '22 Trần Phú, Hà Nội',
-      startDate: '2025-08-01',
-      department: 'Kinh doanh',
-      position: 'Nhân viên chính thức',
-      gender: 'Nữ',
-      dob: '1999-03-10',
-      isProfileComplete: true
-    }
+    { ...presetUsers.Admin }
   ]);
 
   // Simulation states
