@@ -94,15 +94,18 @@ export const checkIn = async (req, res) => {
     const checkInTime = checkInTimeStr ? new Date(checkInTimeStr) : new Date();
     const clockInStr = checkInTime.toTimeString().split(' ')[0];
 
-    // Determine status (Late check)
+    // Determine status (Late check with 10-minute grace period for traffic/weather)
     let attendanceStatus = 'Hợp lệ';
     const checkInHour = checkInTime.getHours() + checkInTime.getMinutes() / 60;
+    const graceHours = 10 / 60; // 10 minutes grace period
     
-    if (shiftName.includes('Sáng') && checkInHour > 8.0) {
+    if (shiftName.includes('Sáng') && checkInHour > (8.0 + graceHours)) {
       attendanceStatus = 'Đi muộn';
-    } else if (shiftName.includes('Chiều') && checkInHour > 13.5) {
+    } else if (shiftName.includes('Chiều') && checkInHour > (13.5 + graceHours)) {
       attendanceStatus = 'Đi muộn';
-    } else if (shiftName.includes('gãy') || shiftName.includes('hành chính') && checkInHour > 8.0) {
+    } else if ((shiftName.includes('gãy') || shiftName.includes('hành chính') || shiftName.includes('Online')) && checkInHour > (8.0 + graceHours)) {
+      attendanceStatus = 'Đi muộn';
+    } else if (shiftName.includes('Tăng ca') && checkInHour > (18.0 + graceHours)) {
       attendanceStatus = 'Đi muộn';
     }
 
