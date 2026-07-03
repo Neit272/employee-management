@@ -162,3 +162,25 @@ export const updateProfile = async (req, res) => {
 export const getCurrentUser = async (req, res) => {
   res.json({ user: req.user });
 };
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+      return res.status(400).json({ error: 'Thiếu thông tin Email hoặc Mật khẩu mới.' });
+    }
+
+    const check = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Không tìm thấy Email tài khoản cần đặt lại mật khẩu.' });
+    }
+
+    await query('UPDATE users SET password = $1 WHERE LOWER(email) = LOWER($2)', [newPassword, email]);
+    await logSystem(`Đặt lại mật khẩu thành công cho tài khoản email: ${email}`, 'success');
+
+    res.json({ message: 'Đặt lại mật khẩu thành công!' });
+  } catch (error) {
+    console.error('Lỗi API Reset Password:', error);
+    res.status(500).json({ error: 'Lỗi hệ thống khi đặt lại mật khẩu.' });
+  }
+};

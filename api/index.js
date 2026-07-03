@@ -35,6 +35,7 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 // ==========================================
 app.post('/api/auth/register', authController.register);
 app.post('/api/auth/login', authController.login);
+app.post('/api/auth/reset-password', authController.resetPassword);
 
 // ==========================================
 // SECURED ROUTES (Requires valid Auth token)
