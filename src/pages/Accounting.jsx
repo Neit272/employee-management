@@ -179,6 +179,7 @@ export default function Accounting() {
 
   // 2FA Security states
   const [is2FAPhase, setIs2FAPhase] = useState('none'); // 'none' | 'password' | 'otp' | 'verified'
+  const [selectedCoreDocId, setSelectedCoreDocId] = useState(null); // Track which doc to download
   const [corePassword, setCorePassword] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [simulatedOtp, setSimulatedOtp] = useState('');
@@ -264,7 +265,8 @@ export default function Accounting() {
   };
 
   // 2FA Flow Executions
-  const trigger2FA = () => {
+  const trigger2FA = (docId) => {
+    setSelectedCoreDocId(docId || null);
     setIs2FAPhase('password');
     setCorePassword('');
     setSecurityError('');
@@ -276,8 +278,8 @@ export default function Accounting() {
 
     try {
       pushLog(`Đang gửi yêu cầu Pass Core xác thực lớp 1...`);
-      // Trigger OTP request for default core document (ID 1)
-      await apiCall('/documents/1/otp-request', 'POST', { passCore: corePassword });
+      const docIdToUse = selectedCoreDocId || 'core';
+      await apiCall(`/documents/${docIdToUse}/otp-request`, 'POST', { passCore: corePassword });
       
       pushLog('Xác thực lớp 1 (Pass Core) thành công.', 'success');
       setCountdown(300);
@@ -306,7 +308,8 @@ export default function Accounting() {
 
     try {
       pushLog('Đang xác nhận mã OTP lớp thứ 2...');
-      const res = await apiCall('/documents/1/download', 'POST', { otp: otpInput });
+      const docIdToUse = selectedCoreDocId || 'core';
+      const res = await apiCall(`/documents/${docIdToUse}/download`, 'POST', { otp: otpInput });
       
       pushLog('Xác thực lớp 2 (OTP 6 số) thành công. Mở khóa thư mục Hợp đồng Core.', 'success');
       setIs2FAPhase('verified');
@@ -335,7 +338,8 @@ export default function Accounting() {
   const handleResendOtp = async () => {
     setSecurityError('');
     try {
-      await apiCall('/documents/1/otp-request', 'POST', { passCore: corePassword });
+      const docIdToUse = selectedCoreDocId || 'core';
+      await apiCall(`/documents/${docIdToUse}/otp-request`, 'POST', { passCore: corePassword });
       setCountdown(300);
       setTimerActive(true);
       setOtpInput('');

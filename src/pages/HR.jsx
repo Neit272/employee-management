@@ -177,7 +177,7 @@ export default function HR() {
     }
   };
 
-  const handleSaveProfileByHR = () => {
+  const handleSaveProfileByHR = async () => {
     if (!hrEditForm.fullName.trim() || !hrEditForm.email.trim()) {
       setErrorMsg('Vui lòng điền đầy đủ Họ và tên và Email.');
       return;
@@ -188,30 +188,28 @@ export default function HR() {
       return;
     }
 
-    setAllUsers(prev => prev.map(u => {
-      if (u.employeeId === selectedUserForDetails.employeeId) {
-        const updated = {
-          ...u,
-          fullName: hrEditForm.fullName.trim(),
-          email: hrEditForm.email.trim(),
-          phone: hrEditForm.phone.trim(),
-          cccd: hrEditForm.cccd.trim(),
-          dob: hrEditForm.dob,
-          gender: hrEditForm.gender,
-          address: hrEditForm.address.trim(),
-          startDate: hrEditForm.startDate
-        };
-        // Update details modal state immediately
-        setSelectedUserForDetails(updated);
-        return updated;
-      }
-      return u;
-    }));
+    try {
+      await apiCall(`/admin/users/${selectedUserForDetails.employeeId}`, 'PUT', {
+        fullName: hrEditForm.fullName.trim(),
+        email: hrEditForm.email.trim(),
+        phone: hrEditForm.phone.trim(),
+        cccd: hrEditForm.cccd.trim(),
+        dob: hrEditForm.dob,
+        gender: hrEditForm.gender,
+        address: hrEditForm.address.trim(),
+        startDate: hrEditForm.startDate
+      });
 
-    setIsEditingProfileByHR(false);
-    setErrorMsg('');
-    pushLog(`HR đã cập nhật thông tin chi tiết nhân sự ${selectedUserForDetails.fullName} (${selectedUserForDetails.employeeId}) thành công.`, 'success');
-    confetti({ particleCount: 30, spread: 25 });
+      setIsEditingProfileByHR(false);
+      setErrorMsg('');
+      pushLog(`HR đã cập nhật thông tin chi tiết nhân sự ${selectedUserForDetails.fullName} (${selectedUserForDetails.employeeId}) thành công.`, 'success');
+      confetti({ particleCount: 30, spread: 25 });
+      await syncFromBackend();
+      setSelectedUserForDetails(null);
+    } catch (err) {
+      setErrorMsg(err.message || 'Lỗi cập nhật hồ sơ.');
+      pushLog(`Lỗi cập nhật hồ sơ nhân sự: ${err.message}`, 'error');
+    }
   };
 
   return (
@@ -716,32 +714,33 @@ export default function HR() {
                     </button>
                     <button
                       onClick={() => {
-                        if (!newExpiryDate) {
-                          setErrorMsg('Vui lòng chọn ngày hết hạn hợp đồng mới.');
-                          return;
-                        }
-                        const selectedDate = new Date(newExpiryDate);
-                        const todayDate = new Date('2026-07-02');
-                        if (selectedDate < todayDate) {
-                          setErrorMsg('Lỗi: Ngày hết hạn mới không được nhỏ hơn ngày hiện tại (2026-07-02).');
-                          return;
-                        }
-                        setErrorMsg('');
-                        // Update in Context
-                        setAllUsers(prev => prev.map(u => {
-                          if (u.employeeId === selectedUserForDetails.employeeId) {
-                            return {
-                              ...u,
-                              contractExpiry: newExpiryDate,
-                              contractFile: uploadedContractName || u.contractFile || `HopDong_LaoDong_${u.fullName.replace(/\s+/g, '_')}_GiaHan.pdf`
-                            };
+                        const handleRenewContract = async () => {
+                          if (!newExpiryDate) {
+                            setErrorMsg('Vui lòng chọn ngày hết hạn hợp đồng mới.');
+                            return;
                           }
-                          return u;
-                        }));
-                        pushLog(`Gia hạn hợp đồng nhân sự ${selectedUserForDetails.fullName} thành công đến ${newExpiryDate}.`, 'success');
-                        setSelectedUserForDetails(null);
-                        setIsRenewMode(false);
-                        confetti({ particleCount: 50, spread: 35 });
+                          const selectedDate = new Date(newExpiryDate);
+                          const todayDate = new Date();
+                          todayDate.setHours(0, 0, 0, 0);
+                          if (selectedDate < todayDate) {
+                            setErrorMsg('Lỗi: Ngày hết hạn mới không được nhỏ hơn ngày hiện tại.');
+                            return;
+                          }
+                          setErrorMsg('');
+                          try {
+                            await apiCall(`/admin/users/${selectedUserForDetails.employeeId}`, 'PUT', {
+                              contractExpiry: newExpiryDate
+                            });
+                            pushLog(`Gia hạn hợp đồng nhân sự ${selectedUserForDetails.fullName} thành công đến ${newExpiryDate}.`, 'success');
+                            setSelectedUserForDetails(null);
+                            setIsRenewMode(false);
+                            confetti({ particleCount: 50, spread: 35 });
+                            await syncFromBackend();
+                          } catch (err) {
+                            setErrorMsg(err.message || 'Lỗi gia hạn hợp đồng.');
+                          }
+                        };
+                        handleRenewContract();
                       }}
                       className="px-4 py-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 text-xs font-bold rounded-lg transition"
                     >

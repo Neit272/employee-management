@@ -16,7 +16,8 @@ const mapUserToCamel = (row) => {
     gender: row.gender,
     dob: row.dob,
     isProfileComplete: row.is_profile_complete,
-    isBlocked: row.is_blocked
+    isBlocked: row.is_blocked,
+    contractExpiry: row.contract_expiry || 'Vô thời hạn'
   };
 };
 
@@ -111,7 +112,7 @@ export const getUsers = async (req, res) => {
 export const updateUserAccount = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const { role, department, position, isBlocked, fullName, email } = req.body;
+    const { role, department, position, isBlocked, fullName, email, phone, cccd, dob, gender, address, startDate, isProfileComplete, contractExpiry, adminVerificationCode } = req.body;
     const currentUser = req.user;
 
     const userRes = await query('SELECT * FROM users WHERE employee_id = $1', [employeeId]);
@@ -138,25 +139,38 @@ export const updateUserAccount = async (req, res) => {
 
     // High level Admin code verification check
     if (role === 'Admin' && user.role !== 'Admin') {
-      const { adminVerificationCode } = req.body;
       if (adminVerificationCode !== 'SUPER_ADMIN_2026') {
         return res.status(400).json({ error: 'Yêu cầu mã xác thực bảo mật cấp cao (Security Code) để cấp quyền Admin.' });
       }
     }
 
-    const updatedFullName = fullName || user.fullName;
-    const updatedEmail = email || user.email;
-    const updatedRole = role || user.role;
-    const updatedDept = department !== undefined ? department : user.department;
-    const updatedPos = position !== undefined ? position : user.position;
-    const updatedBlocked = isBlocked !== undefined ? isBlocked : user.isBlocked;
+    const updatedFullName      = fullName      !== undefined ? fullName      : user.fullName;
+    const updatedEmail         = email         !== undefined ? email         : user.email;
+    const updatedRole          = role          !== undefined ? role          : user.role;
+    const updatedDept          = department    !== undefined ? department    : user.department;
+    const updatedPos           = position      !== undefined ? position      : user.position;
+    const updatedBlocked       = isBlocked     !== undefined ? isBlocked     : user.isBlocked;
+    const updatedPhone         = phone         !== undefined ? phone         : user.phone;
+    const updatedCccd          = cccd          !== undefined ? cccd          : user.cccd;
+    const updatedDob           = dob           !== undefined ? dob           : user.dob;
+    const updatedGender        = gender        !== undefined ? gender        : user.gender;
+    const updatedAddress       = address       !== undefined ? address       : user.address;
+    const updatedStartDate     = startDate     !== undefined ? startDate     : user.startDate;
+    const updatedProfileComplete = isProfileComplete !== undefined ? isProfileComplete : user.isProfileComplete;
+    const updatedContractExpiry  = contractExpiry    !== undefined ? contractExpiry    : user.contractExpiry;
 
     const updateRes = await query(`
       UPDATE users 
-      SET full_name = $1, email = $2, role = $3, department = $4, position = $5, is_blocked = $6
-      WHERE employee_id = $7
+      SET full_name = $1, email = $2, role = $3, department = $4, position = $5, is_blocked = $6,
+          phone = $7, cccd = $8, dob = $9, gender = $10, address = $11, start_date = $12,
+          is_profile_complete = $13, contract_expiry = $14
+      WHERE employee_id = $15
       RETURNING *
-    `, [updatedFullName, updatedEmail, updatedRole, updatedDept, updatedPos, updatedBlocked, employeeId]);
+    `, [
+      updatedFullName, updatedEmail, updatedRole, updatedDept, updatedPos, updatedBlocked,
+      updatedPhone, updatedCccd, updatedDob, updatedGender, updatedAddress, updatedStartDate,
+      updatedProfileComplete, updatedContractExpiry, employeeId
+    ]);
 
     res.json({
       message: 'Cập nhật tài khoản người dùng thành công!',

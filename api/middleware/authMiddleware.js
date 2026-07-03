@@ -18,6 +18,7 @@ export const mapUserToCamel = (row) => {
     dob: row.dob,
     isProfileComplete: row.is_profile_complete,
     isBlocked: row.is_blocked,
+    contractExpiry: row.contract_expiry || 'Vô thời hạn',
     documentOtp: row.document_otp,
     documentOtpExpiresAt: row.document_otp_expires_at
   };

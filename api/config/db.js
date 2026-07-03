@@ -39,9 +39,15 @@ const initDDL = async () => {
         dob VARCHAR(50) DEFAULT '',
         is_profile_complete BOOLEAN DEFAULT FALSE,
         is_blocked BOOLEAN DEFAULT FALSE,
+        contract_expiry VARCHAR(50) DEFAULT 'Vô thời hạn',
         document_otp VARCHAR(10) DEFAULT '',
         document_otp_expires_at TIMESTAMP DEFAULT NULL
       );
+    `);
+
+    // Migrate: add contract_expiry column if it doesn't exist (for existing DBs)
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS contract_expiry VARCHAR(50) DEFAULT 'Vô thời hạn'
     `);
 
     // 2. Attendance Table
@@ -151,7 +157,7 @@ const initDDL = async () => {
       await client.query(`
         INSERT INTO users (
           employee_id, full_name, email, password, role, cccd, phone, address, start_date, department, position, gender, dob, is_profile_complete
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `, [
         'NV000',
         'Phạm Văn D (System Admin)',

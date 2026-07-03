@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Settings, Folder, FileCheck, FileX, Download, Plus, Trash2, Edit2, AlertCircle, UserPlus, Lock, Unlock } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -52,6 +52,29 @@ export default function Admin() {
   const [lockingUser, setLockingUser] = useState(null);
   const [lockReasonType, setLockReasonType] = useState('Nghỉ việc');
   const [customLockReason, setCustomLockReason] = useState('');
+
+  // Matrix Grid States
+  const now = new Date();
+  const [matrixMonth, setMatrixMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'));
+  const [matrixYear, setMatrixYear] = useState(String(now.getFullYear()));
+  const [matrixData, setMatrixData] = useState(null); // { matrix, daysInMonth }
+  const [matrixLoading, setMatrixLoading] = useState(false);
+  const [matrixError, setMatrixError] = useState('');
+  const [showMatrixGrid, setShowMatrixGrid] = useState(false);
+
+  const fetchMatrixGrid = async () => {
+    setMatrixLoading(true);
+    setMatrixError('');
+    try {
+      const res = await apiCall(`/admin/matrix-grid?month=${matrixMonth}&year=${matrixYear}`);
+      setMatrixData(res);
+      setShowMatrixGrid(true);
+    } catch (err) {
+      setMatrixError(err.message || 'Lỗi tải bảng tổng hợp.');
+    } finally {
+      setMatrixLoading(false);
+    }
+  };
 
   // User Account Management States
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -208,7 +231,7 @@ export default function Admin() {
     });
   };
 
-  const handleToggleLockAccount = (user) => {
+  const handleToggleLockAccount = async (user) => {
     if (user.employeeId === currentUser.employeeId) {
       showDialog({
         title: 'Bảo mật chặn',
@@ -218,20 +241,20 @@ export default function Admin() {
       return;
     }
 
-    if (user.isLocked) {
-      // Direct unlock
-      setAllUsers(prev => prev.map(u => {
-        if (u.employeeId === user.employeeId) {
-          return { ...u, isLocked: false, lockReason: null };
-        }
-        return u;
-      }));
-      pushLog(`Admin mở khóa tài khoản: ${user.fullName} (${user.employeeId})`, 'success');
-      showDialog({
-        title: 'Thành công',
-        message: `Đã mở khóa tài khoản ${user.fullName} thành công.`,
-        type: 'success'
-      });
+    if (user.isBlocked) {
+      // Direct unlock via API
+      try {
+        await apiCall(`/admin/users/${user.employeeId}`, 'PUT', { isBlocked: false });
+        pushLog(`Admin mở khóa tài khoản: ${user.fullName} (${user.employeeId})`, 'success');
+        showDialog({
+          title: 'Thành công',
+          message: `Đã mở khóa tài khoản ${user.fullName} thành công.`,
+          type: 'success'
+        });
+        await syncFromBackend();
+      } catch (err) {
+        showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+      }
     } else {
       // Trigger Lock Reason Modal
       setLockingUser(user);
@@ -240,7 +263,7 @@ export default function Admin() {
     }
   };
 
-  const handleConfirmLock = () => {
+  const handleConfirmLock = async () => {
     if (!lockingUser) return;
     
     const finalReason = lockReasonType === 'Khác' ? customLockReason.trim() : lockReasonType;
@@ -253,21 +276,19 @@ export default function Admin() {
       return;
     }
 
-    setAllUsers(prev => prev.map(u => {
-      if (u.employeeId === lockingUser.employeeId) {
-        return { ...u, isLocked: true, lockReason: finalReason };
-      }
-      return u;
-    }));
-
-    pushLog(`Admin khóa tài khoản: ${lockingUser.fullName} (${lockingUser.employeeId}). Lý do: ${finalReason}`, 'error');
-    showDialog({
-      title: 'Đã khóa tài khoản',
-      message: `Tài khoản của ${lockingUser.fullName} đã bị khóa thành công. Lý do: ${finalReason}`,
-      type: 'success'
-    });
-
-    setLockingUser(null);
+    try {
+      await apiCall(`/admin/users/${lockingUser.employeeId}`, 'PUT', { isBlocked: true });
+      pushLog(`Admin khóa tài khoản: ${lockingUser.fullName} (${lockingUser.employeeId}). Lý do: ${finalReason}`, 'error');
+      showDialog({
+        title: 'Đã khóa tài khoản',
+        message: `Tài khoản của ${lockingUser.fullName} đã bị khóa thành công. Lý do: ${finalReason}`,
+        type: 'success'
+      });
+      setLockingUser(null);
+      await syncFromBackend();
+    } catch (err) {
+      showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+    }
   };
 
   // Manual Attendance Edit States
@@ -624,21 +645,39 @@ export default function Admin() {
     );
   });
 
-  const handleExport = () => {
-    if (filteredTimesheet.length === 0) {
+  const handleExport = async () => {
+    try {
+      pushLog('Admin đang kết xuất bảng công CSV từ hệ thống...');
+      const res = await fetch(
+        `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll`,
+        {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('employeeId') || ''}` }
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Lỗi xuất bảng công.');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `BangCong_${matrixYear}-${matrixMonth}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      pushLog('Admin kết xuất thành công bảng công tổng hợp CSV.', 'success');
       showDialog({
-        title: 'Lỗi xuất tệp',
-        message: 'Không thể xuất tệp: Bảng công hiện tại đang trống.',
-        type: 'error'
+        title: 'Xuất file thành công',
+        message: 'Hệ thống đã kết xuất thành công bảng công tổng hợp và đang tải xuống thiết bị của bạn.',
+        type: 'success'
       });
-      return;
+    } catch (err) {
+      pushLog(`Lỗi xuất bảng công: ${err.message}`, 'error');
+      showDialog({ title: 'Lỗi xuất file', message: err.message, type: 'error' });
     }
-    pushLog('Admin kết xuất thành công bảng công tổng hợp CSV/Excel.', 'success');
-    showDialog({
-      title: 'Xuất file thành công',
-      message: 'Hệ thống đã kết xuất thành công bảng công tổng hợp và đang tải xuống thiết bị của bạn.',
-      type: 'success'
-    });
   };
 
   return (
@@ -903,15 +942,15 @@ export default function Admin() {
                     </td>
                     <td className="px-6 py-3.5 text-center">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        user.isLocked
+                        user.isBlocked
                           ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
                           : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                       }`}>
-                        {user.isLocked ? 'Bị khóa' : 'Hoạt động'}
+                        {user.isBlocked ? 'Bị khóa' : 'Hoạt động'}
                       </span>
-                      {user.isLocked && user.lockReason && (
-                        <span className="block text-[9px] text-slate-500 mt-1 max-w-[120px] mx-auto truncate" title={user.lockReason}>
-                          Lý do: {user.lockReason}
+                      {user.isBlocked && (
+                        <span className="block text-[9px] text-slate-500 mt-1 max-w-[120px] mx-auto truncate">
+                          Tài khoản bị vô hiệu hóa
                         </span>
                       )}
                     </td>
@@ -919,11 +958,11 @@ export default function Admin() {
                       <div className="flex items-center justify-end gap-2.5">
                         <button onClick={() => handleToggleLockAccount(user)}
                           className={`p-1.5 rounded-lg transition border ${
-                            user.isLocked
+                            user.isBlocked
                               ? 'bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border-emerald-500/30'
                               : 'bg-rose-500/10 hover:bg-rose-500 hover:text-slate-950 text-rose-400 border-rose-500/30'
-                          }`} title={user.isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}>
-                          {user.isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                          }`} title={user.isBlocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}>
+                          {user.isBlocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                         </button>
                         <button onClick={() => openEditAccountModal(user)}
                           className="p-1.5 bg-slate-800 hover:bg-teal-500 hover:text-slate-950 text-slate-400 rounded-lg transition border border-slate-700" title="Chỉnh sửa tài khoản">
@@ -951,7 +990,7 @@ export default function Admin() {
             <p className="text-slate-500 text-xs mt-0.5">Ký hiệu mã hoá: X (Đi làm), P (Nghỉ phép hưởng lương), Ro (Nghỉ không lương)</p>
           </div>
           
-          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5">
             <input
               type="text"
               placeholder="Tìm kiếm nhân viên..."
@@ -959,15 +998,26 @@ export default function Admin() {
               onChange={(e) => setTimesheetSearch(e.target.value)}
               className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500 w-44"
             />
+            {/* Matrix Grid API Load Button */}
+            {currentUser.role === 'Admin' && (
+              <button
+                onClick={fetchMatrixGrid}
+                disabled={matrixLoading}
+                className="bg-slate-800 hover:bg-teal-500/20 hover:text-teal-400 text-slate-300 border border-slate-700 hover:border-teal-500/30 disabled:opacity-50 font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+                title="Tải bảng tổng hợp chấm công từ server"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                {matrixLoading ? 'Đang tải...' : 'Tải từ DB'}
+              </button>
+            )}
             {/* Export excel validator constraints */}
             {currentUser.role === 'Admin' && (
               <button
-                disabled={filteredTimesheet.length === 0}
                 onClick={handleExport}
-                className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+                className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
               >
                 <Download className="w-4 h-4" />
-                Xuất file
+                Xuất CSV
               </button>
             )}
           </div>
@@ -1024,6 +1074,90 @@ export default function Admin() {
           </table>
         </div>
       </div>
+      {/* Matrix Grid Panel — loaded from backend API */}
+      {(showMatrixGrid || matrixLoading || matrixError) && (
+        <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">
+          <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                <Settings className="w-4 h-4 text-teal-400" />
+                Bảng Tổng Hợp Chấm Công (DB)
+              </h3>
+              <p className="text-slate-500 text-xs mt-0.5">
+                Dữ liệu trực tiếp từ cơ sở dữ liệu. X = Đi làm, P = Nghỉ phép, Ro = Vắng mặt, – = Không ghi nhận.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <select value={matrixMonth} onChange={(e) => setMatrixMonth(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500">
+                {Array.from({ length: 12 }, (_, i) => {
+                  const m = String(i + 1).padStart(2, '0');
+                  return <option key={m} value={m}>Tháng {i + 1}</option>;
+                })}
+              </select>
+              <input type="number" value={matrixYear} onChange={(e) => setMatrixYear(e.target.value)}
+                min="2020" max="2030" placeholder="Năm"
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500 w-20" />
+              <button onClick={fetchMatrixGrid} disabled={matrixLoading}
+                className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold rounded-lg text-xs transition disabled:opacity-50">
+                {matrixLoading ? 'Đang tải...' : 'Tải lại'}
+              </button>
+              <button onClick={() => { setShowMatrixGrid(false); setMatrixData(null); setMatrixError(''); }}
+                className="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg text-xs transition">✕</button>
+            </div>
+          </div>
+          {matrixError && (
+            <div className="px-6 py-4 text-rose-400 text-xs">{matrixError}</div>
+          )}
+          {matrixLoading && (
+            <div className="px-6 py-8 text-center text-slate-500 text-xs">Đang tải dữ liệu từ database...</div>
+          )}
+          {matrixData && !matrixLoading && (
+            <div className="overflow-auto max-w-full max-h-[500px]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-850">
+                    <th className="px-4 py-3 min-w-[150px] sticky left-0 top-0 bg-slate-950 border-r border-slate-800 z-40">Nhân viên</th>
+                    {Array.from({ length: matrixData.daysInMonth }, (_, i) => (
+                      <th key={i + 1} className="px-2 py-3 text-center min-w-[32px] bg-slate-950 sticky top-0 z-10">{i + 1}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-850/60">
+                  {matrixData.matrix.length === 0 ? (
+                    <tr><td colSpan="35" className="px-6 py-8 text-center text-slate-500 italic">Không có dữ liệu chấm công trong tháng này.</td></tr>
+                  ) : (
+                    matrixData.matrix.map((row) => (
+                      <tr key={row.employeeId} className="hover:bg-slate-900/10">
+                        <td className="px-4 py-2.5 font-medium text-slate-250 sticky left-0 bg-slate-900 border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.2)]">
+                          {row.fullName}
+                          <span className="block text-[10px] text-slate-500">{row.employeeId} · {row.department || '—'}</span>
+                        </td>
+                        {Array.from({ length: matrixData.daysInMonth }, (_, i) => {
+                          const day = i + 1;
+                          const cell = row.days[day] || { symbol: '–', hours: 0 };
+                          return (
+                            <td key={day} className="px-1 py-2.5 text-center">
+                              <span title={`${cell.hours}h`} className={`inline-flex items-center justify-center w-6 h-5 rounded text-[9px] font-bold ${
+                                cell.symbol === 'X' ? 'bg-emerald-500/15 text-emerald-400' :
+                                cell.symbol === 'P' ? 'bg-blue-500/15 text-blue-400' :
+                                cell.symbol === 'Ro' ? 'bg-rose-500/15 text-rose-400' :
+                                'text-slate-700'
+                              }`}>
+                                {cell.symbol}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Manual Attendance Editor Section */}
       <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">
