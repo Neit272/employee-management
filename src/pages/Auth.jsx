@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, Mail, Lock, User, CheckCircle } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, User, CheckCircle, X, Copy, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function Auth() {
@@ -28,6 +28,8 @@ export default function Auth() {
   const [forgotNewPass, setForgotNewPass] = useState('');
   const [forgotConfirmPass, setForgotConfirmPass] = useState('');
   const [sentOtpVal, setSentOtpVal] = useState('123456');
+  const [otpToast, setOtpToast] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
@@ -40,7 +42,9 @@ export default function Auth() {
       const res = await apiCall('/auth/forgot-password', 'POST', { email });
       setSentOtpVal(res.otp);
       setForgotStep(2);
-      setSuccessMsg(`Mã xác thực OTP đã được gửi thành công đến hòm thư: ${email}. (Mã OTP mô phỏng để test là: ${res.otp})`);
+      setSuccessMsg(`Mã xác thực OTP đã được gửi thành công đến hòm thư: ${email}.`);
+      setOtpToast({ otp: res.otp, email });
+      setCopied(false);
       pushLog(`Simulate OTP: Đã gửi mã khôi phục mật khẩu [${res.otp}] đến hòm thư ${email}.`, 'success');
     } catch (err) {
       setErrorMsg(err.message || 'Yêu cầu gửi OTP thất bại.');
@@ -73,6 +77,7 @@ export default function Auth() {
 
       pushLog(`Khôi phục mật khẩu thành công cho tài khoản: ${forgotEmail}`, 'success');
       setSuccessMsg('Đã đặt lại mật khẩu thành công! Bây giờ bạn có thể đăng nhập bằng mật khẩu mới.');
+      setOtpToast(null);
       
       // Clear forgot states and redirect back to login step
       setForgotEmail('');
@@ -204,7 +209,7 @@ export default function Auth() {
           <div className="flex items-center gap-2 mb-6">
             <button 
               type="button"
-              onClick={() => { setActiveTab('login'); setErrorMsg(''); setSuccessMsg(''); }}
+              onClick={() => { setActiveTab('login'); setErrorMsg(''); setSuccessMsg(''); setOtpToast(null); }}
               className="w-full flex items-center justify-center gap-1 py-2 px-3 bg-slate-950 border border-slate-800 hover:bg-slate-900 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 transition"
             >
               ← Quay lại Đăng nhập
@@ -431,6 +436,60 @@ export default function Auth() {
           </form>
         )}
       </div>
+
+      {/* Dynamic OTP Demo Toast Notification */}
+      {otpToast && (
+        <div className="fixed top-6 right-6 z-50 w-full max-w-sm bg-slate-900/90 border border-teal-500/30 rounded-2xl p-5 shadow-[0_8px_32px_rgba(20,184,166,0.25)] backdrop-blur-md animate-slide-in-right text-slate-100">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center border border-teal-500/20 text-teal-400">
+                <ShieldCheck className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-teal-300 tracking-wide">Mã OTP Khôi Phục (Demo)</h4>
+                <p className="text-[10px] text-slate-400 mt-0.5">Tài khoản: {otpToast.email}</p>
+              </div>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setOtpToast(null)}
+              className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition"
+              title="Đóng"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col items-center justify-center gap-2 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <span className="text-xs text-slate-500 font-medium">MÃ OTP CỦA BẠN LÀ</span>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-extrabold tracking-[0.25em] text-teal-400 font-mono pl-[0.25em]">
+                {otpToast.otp}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(otpToast.otp);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                  pushLog(`Đã sao chép mã OTP: ${otpToast.otp} vào clipboard.`, 'success');
+                }}
+                className={`p-2 rounded-lg transition border flex items-center justify-center ${
+                  copied 
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' 
+                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-teal-400 hover:border-teal-500/40 hover:bg-slate-800'
+                }`}
+                title={copied ? "Đã sao chép" : "Sao chép mã OTP"}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-3 text-center leading-relaxed">
+            Hệ thống đã lưu mã OTP này vào database. Sử dụng mã này điền vào ô xác thực phía dưới để hoàn tất đổi mật khẩu.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
