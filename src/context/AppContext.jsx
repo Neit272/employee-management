@@ -266,7 +266,12 @@ export const AppProvider = ({ children }) => {
             const inDate = new Date();
             inDate.setHours(h, m, s);
             setCheckInTime(inDate);
+          } else {
+            setCheckInTime(null);
           }
+        } else {
+          setIsCheckedIn(false);
+          setCheckInTime(null);
         }
       }
 
@@ -364,6 +369,15 @@ export const AppProvider = ({ children }) => {
     pushLog(`Chuyển sang tài khoản: ${user.fullName} (${user.role})`, 'success');
   };
 
+  // Logout current user and clear states
+  const logout = () => {
+    setCurrentUser(null);
+    setIsCheckedIn(false);
+    setCheckInTime(null);
+    setCurrentPath('/dashboard');
+    pushLog('Đã đăng xuất tài khoản thành công.', 'info');
+  };
+
   // Synchronize path and verify route guards
   const navigateTo = (path) => {
     pushLog(`Điều hướng tới: ${path}`);
@@ -441,6 +455,7 @@ export const AppProvider = ({ children }) => {
         currentPath,
         navigateTo,
         changeUserRole,
+        logout,
         checkRoutePermission,
         notifications,
         setNotifications: updateNotifications,

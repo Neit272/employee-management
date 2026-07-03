@@ -22,7 +22,7 @@ import {
 export default function MainLayout({ children }) {
   const { 
     currentUser, 
-    setIsLoggedIn, 
+    logout, 
     currentPath, 
     navigateTo, 
     officeWifi, 
@@ -41,7 +41,7 @@ export default function MainLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
+    logout();
   };
 
   const handleMarkAllRead = () => {

@@ -281,10 +281,6 @@ export default function Auth() {
             >
               Đăng nhập hệ thống
             </button>
-            
-            <div className="text-center pt-2">
-              <span className="text-xs text-slate-500">Mẹo: Bạn có thể chọn bất kỳ tài khoản demo nào trong bảng mô phỏng ở góc dưới phải.</span>
-            </div>
           </form>
         )}
 
@@ -447,7 +443,7 @@ export default function Auth() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-teal-300 tracking-wide">Mã OTP Khôi Phục (Demo)</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5">Tài khoản: {otpToast.email}</p>
+                <p className="text-[11px] text-slate-300 mt-0.5">Tài khoản: <span className="text-teal-200 font-medium">{otpToast.email}</span></p>
               </div>
             </div>
             <button 
@@ -459,9 +455,9 @@ export default function Auth() {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col items-center justify-center gap-2 relative overflow-hidden group">
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col items-center justify-center gap-2 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            <span className="text-xs text-slate-500 font-medium">MÃ OTP CỦA BẠN LÀ</span>
+            <span className="text-[11px] text-slate-400 font-semibold tracking-wider">MÃ OTP CỦA BẠN LÀ</span>
             <div className="flex items-center gap-3">
               <span className="text-3xl font-extrabold tracking-[0.25em] text-teal-400 font-mono pl-[0.25em]">
                 {otpToast.otp}
@@ -477,7 +473,7 @@ export default function Auth() {
                 className={`p-2 rounded-lg transition border flex items-center justify-center ${
                   copied 
                     ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' 
-                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-teal-400 hover:border-teal-500/40 hover:bg-slate-800'
+                    : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-teal-400 hover:border-teal-500/40 hover:bg-slate-800'
                 }`}
                 title={copied ? "Đã sao chép" : "Sao chép mã OTP"}
               >
@@ -485,7 +481,7 @@ export default function Auth() {
               </button>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 mt-3 text-center leading-relaxed">
+          <p className="text-[11px] text-slate-300 mt-3 text-center leading-relaxed">
             Hệ thống đã lưu mã OTP này vào database. Sử dụng mã này điền vào ô xác thực phía dưới để hoàn tất đổi mật khẩu.
           </p>
         </div>
