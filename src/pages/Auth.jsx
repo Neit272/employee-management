@@ -4,13 +4,13 @@ import { ShieldCheck, Mail, Lock, User, CheckCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function Auth() {
-  const { setIsLoggedIn, setCurrentUser, setAllUsers, pushLog, showDialog } = useApp();
+  const { setIsLoggedIn, setCurrentUser, setAllUsers, pushLog, showDialog, apiCall } = useApp();
   
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('nva@genxpks.com');
-  const [loginPass, setLoginPass] = useState('••••••••');
+  const [loginPass, setLoginPass] = useState('password123');
   
   // Register Form States
   const [regName, setRegName] = useState('');
@@ -21,101 +21,29 @@ export default function Auth() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     
-    // Simulate API check
     pushLog(`Thực hiện đăng nhập cho email: ${loginEmail}`);
     
-    // Check if it's one of the preset accounts
-    let matchedUser = null;
-    if (loginEmail === 'nva@genxpks.com') {
-      matchedUser = {
-        fullName: 'Nguyễn Văn A',
-        email: 'nva@genxpks.com',
-        role: 'NhanVien',
-        employeeId: 'NV001',
-        cccd: '012345678912',
-        phone: '0987654321',
-        address: '123 Đường Láng, Hà Nội',
-        startDate: '2025-01-15',
-        department: 'Kỹ thuật',
-        gender: 'Nam',
-        dob: '1998-05-20',
-        isProfileComplete: true
-      };
-    } else if (loginEmail === 'ttb@genxpks.com') {
-      matchedUser = {
-        fullName: 'Trần Thị B',
-        email: 'ttb@genxpks.com',
-        role: 'KeToan',
-        employeeId: 'NV002',
-        cccd: '012345678913',
-        phone: '0976543210',
-        address: '456 Cầu Giấy, Hà Nội',
-        startDate: '2025-02-10',
-        department: 'Kế toán',
-        gender: 'Nữ',
-        dob: '1996-08-15',
-        isProfileComplete: true
-      };
-    } else if (loginEmail === 'lvc@genxpks.com') {
-      matchedUser = {
-        fullName: 'Lê Văn C',
-        email: 'lvc@genxpks.com',
-        role: 'HR',
-        employeeId: 'NV003',
-        cccd: '012345678914',
-        phone: '0965432109',
-        address: '789 Nguyễn Chí Thanh, Hà Nội',
-        startDate: '2024-11-01',
-        department: 'Nhân sự',
-        gender: 'Nam',
-        dob: '1995-12-05',
-        isProfileComplete: true
-      };
-    } else if (loginEmail === 'admin@genxpks.com') {
-      matchedUser = {
-        fullName: 'Phạm Văn D (System Admin)',
-        email: 'admin@genxpks.com',
-        role: 'Admin',
-        employeeId: 'NV000',
-        cccd: '012345678911',
-        phone: '0999999999',
-        address: 'Trụ sở chính GENX PKS',
-        startDate: '2024-01-01',
-        department: 'Hành chính',
-        gender: 'Nam',
-        dob: '1990-01-01',
-        isProfileComplete: true
-      };
-    } else {
-      // Find inside dynamically registered users
-      // If not found, assume it is a mock user with incomplete profile for demo
-      matchedUser = {
-        fullName: loginEmail.split('@')[0],
+    try {
+      const res = await apiCall('/auth/login', 'POST', {
         email: loginEmail,
-        role: 'NhanVien',
-        employeeId: `NV${Math.floor(100 + Math.random() * 900)}`,
-        cccd: '',
-        phone: '',
-        address: '',
-        startDate: '',
-        department: '',
-        gender: '',
-        dob: '',
-        isProfileComplete: false
-      };
+        password: loginPass
+      });
+      
+      setCurrentUser(res.user);
+      setIsLoggedIn(true);
+      pushLog(`Đăng nhập thành công: ${res.user.fullName} (${res.user.role})`, 'success');
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+    } catch (err) {
+      setErrorMsg(err.message || 'Email hoặc mật khẩu không chính xác.');
+      pushLog(`Đăng nhập thất bại: ${err.message}`, 'error');
     }
-    
-    setCurrentUser(matchedUser);
-    setIsLoggedIn(true);
-    pushLog(`Đăng nhập thành công: ${matchedUser.fullName} (${matchedUser.role})`, 'success');
-    confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -131,43 +59,34 @@ export default function Auth() {
       return;
     }
 
-    // Creating new account with incomplete profile to test Mandatory Profile Update
-    const newEmpId = `NV${Math.floor(100 + Math.random() * 900)}`;
-    const newUser = {
-      fullName: regName,
-      email: regEmail,
-      role: 'NhanVien',
-      employeeId: newEmpId,
-      cccd: '',
-      phone: '',
-      address: '',
-      startDate: '',
-      department: '',
-      gender: '',
-      dob: '',
-      isProfileComplete: false // Force profile update lock screen
-    };
+    try {
+      pushLog(`Bắt đầu đăng ký tài khoản cho ${regName} (${regEmail})`);
+      await apiCall('/auth/register', 'POST', {
+        fullName: regName,
+        email: regEmail,
+        password: regPass,
+        confirmPassword: regConfirmPass
+      });
 
-    // Add to state DB
-    setAllUsers(prev => [...prev, newUser]);
-    
-    // Simulate push activation email (WITHOUT plain text password)
-    pushLog(`Đăng ký tài khoản thành công cho ${regName} (${regEmail})`, 'success');
-    pushLog(`[Bảo mật] Đã gửi email kích hoạt đến ${regEmail}. Nội dung email chỉ bao gồm liên kết kích hoạt và mã định danh, TUYỆT ĐỐI KHÔNG hiển thị mật khẩu gốc dạng văn bản thuần.`, 'success');
+      pushLog(`Đăng ký tài khoản thành công cho ${regName} (${regEmail})`, 'success');
+      pushLog(`[Bảo mật] Đã gửi email kích hoạt đến ${regEmail}. Nội dung email chỉ bao gồm liên kết kích hoạt và mã định danh.`, 'success');
 
-    // Confetti effect
-    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    
-    setSuccessMsg(`Đăng ký thành công! Hệ thống đã gửi email kích hoạt tài khoản. Đăng nhập ngay để bắt đầu thiết lập thông tin.`);
-    setActiveTab('login');
-    setLoginEmail(regEmail);
-    setLoginPass(regPass);
-    
-    // Clear registration fields
-    setRegName('');
-    setRegEmail('');
-    setRegPass('');
-    setRegConfirmPass('');
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      
+      setSuccessMsg(`Đăng ký thành công! Hệ thống đã gửi email kích hoạt tài khoản. Đăng nhập ngay để bắt đầu thiết lập thông tin.`);
+      setActiveTab('login');
+      setLoginEmail(regEmail);
+      setLoginPass(regPass);
+
+      // Clear registration fields
+      setRegName('');
+      setRegEmail('');
+      setRegPass('');
+      setRegConfirmPass('');
+    } catch (err) {
+      setErrorMsg(err.message || 'Đăng ký tài khoản thất bại.');
+      pushLog(`Đăng ký thất bại: ${err.message}`, 'error');
+    }
   };
 
   return (
