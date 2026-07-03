@@ -52,7 +52,7 @@ export const authMiddleware = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Lỗi xác thực middleware:', error);
-    res.status(500).json({ error: 'Lỗi máy chủ xác thực tài khoản.' });
+    res.status(500).json({ error: `Lỗi máy chủ xác thực tài khoản: ${error.message}` });
   }
 };
 
