@@ -58,16 +58,37 @@ export default function Accounting() {
     return matchSearch && matchDept && matchPos;
   });
 
-  const formatDate = (dateStr) => {
-    if (!dateStr || dateStr === 'Vô thời hạn' || dateStr === '—') return dateStr;
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      if (parts[0].length === 4) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  const formatDate = (dateInput) => {
+    if (!dateInput || dateInput === 'Vô thời hạn' || dateInput === '—') return dateInput;
+    try {
+      if (typeof dateInput === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
+        return dateInput;
       }
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return dateInput;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      return dateInput;
     }
-    return dateStr;
+  };
+
+  const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr || dateTimeStr === '—') return dateTimeStr;
+    try {
+      const d = new Date(dateTimeStr);
+      if (isNaN(d.getTime())) return dateTimeStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (e) {
+      return dateTimeStr;
+    }
   };
 
   // Helper to calculate contract status relative to simulated current date 2026-07-02
@@ -463,7 +484,7 @@ export default function Accounting() {
                         {doc.name}
                       </td>
                       <td className="px-6 py-3.5 text-center font-mono text-slate-400">{doc.uploaderId}</td>
-                      <td className="px-6 py-3.5 text-slate-400">{doc.uploadDateTime}</td>
+                      <td className="px-6 py-3.5 text-slate-400">{formatDateTime(doc.uploadDateTime)}</td>
                       <td className="px-6 py-3.5 text-slate-350 font-semibold">{doc.type}</td>
                       <td className="px-6 py-3.5 text-center font-mono text-slate-400">{doc.size}</td>
                       <td className="px-6 py-3.5 text-right">
@@ -771,7 +792,7 @@ export default function Accounting() {
                     {doc.name}
                   </td>
                   <td className="px-6 py-4 font-mono text-slate-400">{doc.employeeId}</td>
-                  <td className="px-6 py-4 text-slate-400">{doc.uploadDate}</td>
+                  <td className="px-6 py-4 text-slate-400">{formatDateTime(doc.uploadDate)}</td>
                   <td className="px-6 py-4 text-slate-350 font-semibold">{doc.type}</td>
                 </tr>
               ))}

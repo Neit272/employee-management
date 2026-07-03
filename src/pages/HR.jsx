@@ -6,16 +6,21 @@ import confetti from 'canvas-confetti';
 export default function HR() {
   const { currentUser, allUsers, setAllUsers, departments, positions, pushLog, apiCall, syncFromBackend } = useApp();
 
-  const formatDate = (dateStr) => {
-    if (!dateStr || dateStr === 'Vô thời hạn' || dateStr === '—') return dateStr;
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      if (parts[0].length === 4) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  const formatDate = (dateInput) => {
+    if (!dateInput || dateInput === 'Vô thời hạn' || dateInput === '—') return dateInput;
+    try {
+      if (typeof dateInput === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
+        return dateInput;
       }
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return dateInput;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      return dateInput;
     }
-    return dateStr;
   };
 
   const validateVietnamesePhone = (phone) => {
