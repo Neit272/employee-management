@@ -344,24 +344,27 @@ export default function Admin() {
     setRejectComment('');
   };
 
-  const submitReject = (e) => {
+  const submitReject = async (e) => {
     e.preventDefault();
     if (!rejectComment.trim()) return;
 
     const reqId = rejectingReqId;
     const targetReq = requests.find(r => r.id === reqId);
-    pushLog(`Admin tá»« chá»‘i Ä‘Æ¡n sá»‘ REQ${reqId.toString().slice(-4)} vá»›i lÃ½ do: ${rejectComment.trim()}`);
+    pushLog(`Admin từ chối đơn số REQ${reqId.toString().slice(-4)} với lý do: ${rejectComment.trim()}`);
     
-    setRequests(prev => prev.map(req => {
-      if (req.id === reqId) {
-        return { ...req, status: 'Rejected', comment: rejectComment.trim() };
-      }
-      return req;
-    }));
+    try {
+      await apiCall(`/requests/${reqId}`, 'PUT', {
+        status: 'Rejected',
+        rejectReason: rejectComment.trim()
+      });
 
-    setRejectingReqId(null);
-    pushLog(`ÄÆ¡n REQ${reqId.toString().slice(-4)} Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn tráº¡ng thÃ¡i: Tá»ª CHá»I`, 'error');
-    addNotification('Tá»« chá»‘i Ä‘Æ¡n tá»«', `ÄÆ¡n ${targetReq?.type || 'yÃªu cáº§u'} cá»§a ${targetReq?.employeeName || 'nhÃ¢n viÃªn'} Ä‘Ã£ bá»‹ Tá»ª CHá»I. LÃ½ do: ${rejectComment.trim()}`, 'error');
+      setRejectingReqId(null);
+      pushLog(`Đơn REQ${reqId.toString().slice(-4)} đã được chuyển trạng thái: TỪ CHỐI`, 'error');
+      addNotification('Từ chối đơn từ', `Đơn ${targetReq?.type || 'yêu cầu'} của ${targetReq?.employeeName || 'nhân viên'} đã bị TỪ CHỐI. Lý do: ${rejectComment.trim()}`, 'error');
+      await syncFromBackend();
+    } catch (err) {
+      showDialog({ title: 'Lỗi', message: err.message, type: 'error' });
+    }
   };
 
   // 3. Admin self-demotion protection rule
