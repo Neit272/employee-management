@@ -166,7 +166,8 @@ const presetUsers = {
     position: 'Nhân viên chính thức',
     gender: 'Nam',
     dob: '1998-05-20',
-    isProfileComplete: true
+    isProfileComplete: true,
+    contractExpiry: '2027-01-15'
   },
   KeToan: {
     fullName: 'Trần Thị B',
@@ -181,7 +182,8 @@ const presetUsers = {
     position: 'Kế toán viên',
     gender: 'Nữ',
     dob: '1996-08-15',
-    isProfileComplete: true
+    isProfileComplete: true,
+    contractExpiry: '2026-08-31'
   },
   HR: {
     fullName: 'Lê Văn C',
@@ -196,7 +198,8 @@ const presetUsers = {
     position: 'Chuyên viên HR',
     gender: 'Nam',
     dob: '1995-12-05',
-    isProfileComplete: true
+    isProfileComplete: true,
+    contractExpiry: '2026-11-01'
   },
   Admin: {
     fullName: 'Phạm Văn D (System Admin)',
@@ -211,7 +214,8 @@ const presetUsers = {
     position: 'Trưởng phòng',
     gender: 'Nam',
     dob: '1990-01-01',
-    isProfileComplete: true
+    isProfileComplete: true,
+    contractExpiry: 'Vô thời hạn'
   }
 };
 
@@ -253,6 +257,25 @@ export const AppProvider = ({ children }) => {
   const [gpsWithinRange, setGpsWithinRange] = useState(true);
   const [systemTimeOffset, setSystemTimeOffset] = useState(0); // Offset in minutes
   const [firebaseLogs, setFirebaseLogs] = useState([]);
+
+  // System parameters configuration
+  const [allowedWifiIp, setAllowedWifiIp] = useState('192.168.1.100');
+  const [allowedDistance, setAllowedDistance] = useState(100);
+  const [gracePeriod, setGracePeriod] = useState(10);
+
+  // Theme configuration (light/dark)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
   
   // Real time punch state for active user
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -271,6 +294,18 @@ export const AppProvider = ({ children }) => {
     onConfirm: null,
     onCancel: null
   });
+
+  // Global Undo Toast State
+  const [undoToast, setUndoToast] = useState(null);
+
+  const triggerUndo = (message, onConfirm, onUndo) => {
+    setUndoToast(prev => {
+      if (prev && prev.onConfirm) {
+        prev.onConfirm();
+      }
+      return { message, onConfirm, onUndo, id: Date.now() };
+    });
+  };
 
   const showDialog = (config) => {
     setModalDialog({
@@ -536,10 +571,10 @@ export const AppProvider = ({ children }) => {
     if (path === '/dashboard' || path === '/profile' || path === '/history' || path === '/requests') {
       return true; // All roles can access standard pages
     }
-    if (path === '/hr' && (role === 'HR' || role === 'Admin')) {
+    if (path === '/hr' && (role === 'HR' || role === 'KeToan' || role === 'Admin')) {
       return true;
     }
-    if (path === '/accounting' && (role === 'KeToan' || role === 'Admin')) {
+    if (path === '/accounting' && (role === 'KeToan' || role === 'HR' || role === 'Admin')) {
       return true;
     }
     if (path === '/admin' && role === 'Admin') {
@@ -602,7 +637,18 @@ export const AppProvider = ({ children }) => {
         showDialog,
         closeDialog,
         apiCall,
-        syncFromBackend
+        syncFromBackend,
+        undoToast,
+        setUndoToast,
+        triggerUndo,
+        allowedWifiIp,
+        setAllowedWifiIp,
+        allowedDistance,
+        setAllowedDistance,
+        gracePeriod,
+        setGracePeriod,
+        theme,
+        setTheme
       }}
     >
       {children}

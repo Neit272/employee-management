@@ -5,6 +5,18 @@ import confetti from 'canvas-confetti';
 
 export default function Requests() {
   const { currentUser, requests, setRequests, pushLog, addNotification, apiCall, syncFromBackend } = useApp();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === 'Vô thời hạn' || dateStr === '—') return dateStr;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    }
+    return dateStr;
+  };
   
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -202,7 +214,7 @@ export default function Requests() {
                     <td className="px-6 py-4 text-slate-200 font-medium">{req.employeeName} <span className="text-slate-500 block text-xs">{req.employeeId}</span></td>
                     <td className="px-6 py-4 font-semibold text-slate-350">{req.type}</td>
                     <td className="px-6 py-4 text-slate-400">
-                      {req.fromDate === req.toDate ? req.fromDate : `${req.fromDate} → ${req.toDate}`}
+                      {req.fromDate === req.toDate ? formatDate(req.fromDate) : `${formatDate(req.fromDate)} → ${formatDate(req.toDate)}`}
                     </td>
                     <td className="px-6 py-4 text-slate-400 max-w-xs">
                       <p className="truncate" title={req.reason}>{req.reason}</p>

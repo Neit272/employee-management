@@ -5,6 +5,18 @@ import { Search, Calendar, AlertCircle, Filter, HelpCircle } from 'lucide-react'
 export default function History() {
   const { attendanceHistory, pushLog, currentUser } = useApp();
 
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === 'Vô thời hạn' || dateStr === '—') return dateStr;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    }
+    return dateStr;
+  };
+
   // Date helper functions for dynamic current month limits
   const getFirstDayOfCurrentMonth = () => {
     const d = new Date();
@@ -300,7 +312,7 @@ export default function History() {
               ) : (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-900/10 transition duration-150">
-                    <td className="px-6 py-4 font-medium text-slate-300">{log.date}</td>
+                    <td className="px-6 py-4 font-medium text-slate-300">{formatDate(log.date)}</td>
                     <td className="px-6 py-4 text-slate-400">{log.shift}</td>
                     <td className="px-6 py-4 text-slate-350 font-mono">{log.clockIn}</td>
                     <td className="px-6 py-4 text-slate-350 font-mono">{log.clockOut}</td>

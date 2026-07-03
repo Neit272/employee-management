@@ -53,3 +53,152 @@
 .glow-red {
   animation: neon-glow-red 2s infinite ease-in-out;
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity;
+}
+
+/* Optimized keyframe animations for premium UX with 60fps GPU acceleration */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Card hover premium glow effects */
+.hover-card-premium {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+}
+
+.hover-card-premium:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 15px rgba(20, 184, 166, 0.08);
+  border-color: rgba(20, 184, 166, 0.25);
+}
+
+/* Staggered entry delays */
+.animate-delay-75 { animation-delay: 75ms; }
+.animate-delay-150 { animation-delay: 150ms; }
+.animate-delay-225 { animation-delay: 225ms; }
+
+/* Highly Polished Premium Light Theme mapping */
+.light {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+.light .bg-\[\#080b11\] {
+  background-color: #f1f5f9 !important; /* slate-100 */
+}
+.light .bg-\[\#0b0f19\] {
+  background-color: #f8fafc !important; /* slate-50 */
+}
+/* Card and container backgrounds */
+.light .bg-slate-900,
+.light .bg-slate-900\/30,
+.light .bg-slate-900\/40,
+.light .bg-slate-900\/60,
+.light .bg-slate-950,
+.light .bg-slate-950\/20,
+.light .bg-slate-950\/40,
+.light .bg-slate-950\/80 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+/* Minor accent backgrounds */
+.light .bg-slate-800,
+.light .bg-slate-850,
+.light .bg-slate-855,
+.light .bg-slate-800\/40,
+.light .bg-slate-900\/10,
+.light .bg-slate-950\/60 {
+  background-color: #e2e8f0 !important; /* slate-200 */
+}
+.light .hover\:bg-slate-900\/10:hover,
+.light .hover\:bg-slate-800:hover,
+.light .hover\:bg-slate-750:hover {
+  background-color: #cbd5e1 !important; /* slate-300 */
+}
+/* Border colors */
+.light .border-slate-800,
+.light .border-slate-850,
+.light .border-slate-855,
+.light .border-slate-700,
+.light .border-slate-800\/80,
+.light .border-slate-700\/50 {
+  border-color: #cbd5e1 !important; /* slate-300 */
+}
+/* Primary and secondary texts */
+.light .text-slate-100,
+.light .text-slate-200,
+.light .text-slate-250,
+.light .text-slate-300,
+.light .text-slate-350 {
+  color: #0f172a !important;
+}
+.light .text-slate-450,
+.light .text-slate-400,
+.light .text-slate-500 {
+  color: #334155 !important; /* slate-700 */
+}
+.light .text-slate-600 {
+  color: #64748b !important; /* slate-500 */
+}
+/* Input fields */
+.light input,
+.light select,
+.light textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  border-color: #14b8a6 !important; /* teal-500 */
+}
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+/* Sidebar active item styling adjustment */
+.light .bg-slate-800\/50 {
+  background-color: #cbd5e1 !important;
+}
+.light .text-teal-400 {
+  color: #0d9488 !important; /* darker teal for readability in light mode */
+}
+.light .text-emerald-400 {
+  color: #059669 !important;
+}
+.light .text-rose-455,
+.light .text-rose-400 {
+  color: #dc2626 !important;
+}
+.light .text-amber-400 {
+  color: #d97706 !important;
+}

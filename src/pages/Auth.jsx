@@ -4,7 +4,7 @@ import { ShieldCheck, Mail, Lock, User, CheckCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function Auth() {
-  const { setIsLoggedIn, setCurrentUser, setAllUsers, pushLog, showDialog, apiCall } = useApp();
+  const { setIsLoggedIn, setCurrentUser, allUsers, setAllUsers, pushLog, showDialog, apiCall } = useApp();
   
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   

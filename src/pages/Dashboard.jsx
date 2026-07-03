@@ -27,12 +27,47 @@ export default function Dashboard() {
     checkInTime,
     setCheckInTime,
     apiCall,
-    syncFromBackend
+    syncFromBackend,
+    allowedWifiIp,
+    allowedDistance,
+    gracePeriod,
+    setCurrentUser,
+    setAllUsers
   } = useApp();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === 'Vô thời hạn' || dateStr === '—') return dateStr;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    }
+    return dateStr;
+  };
+
+  const validateVietnamesePhone = (phone) => {
+    if (!phone) return true;
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+    return /^(0|84|\+84)(3|5|7|8|9)([0-9]{8})$/.test(cleanPhone);
+  };
 
   const [time, setTime] = useState(new Date());
   const [punchLoading, setPunchLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Profile Edit states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    cccd: '',
+    dob: '',
+    gender: 'Nam',
+    address: ''
+  });
 
   // Real-time tick effect (accounting for simulator offset)
   useEffect(() => {
@@ -45,11 +80,13 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, [systemTimeOffset]);
 
-  // Automatic Shift Recommendation based on current simulated time
+  // Automatic Shift Recommendation based on current simulated time (runs on mount/checkout, not on clock ticks)
   useEffect(() => {
     if (!isCheckedIn) {
-      const hr = time.getHours();
-      const mins = time.getMinutes();
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + systemTimeOffset);
+      const hr = now.getHours();
+      const mins = now.getMinutes();
       const currentDecimalTime = hr + mins / 60;
 
       let recommendedShift = shifts[0].name; // Default morning
@@ -63,24 +100,41 @@ export default function Dashboard() {
       
       setCurrentShift(recommendedShift);
     }
-  }, [time, isCheckedIn, setCurrentShift]);
+  }, [isCheckedIn, systemTimeOffset, setCurrentShift]);
 
   const showToast = (message, type = 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Helper to determine if a check-in is late based on grace period configuration
+  const isLateCheckIn = (checkInDateObj) => {
+    if (!currentShift) return false;
+    const match = currentShift.match(/\((\d{2}):(\d{2})/);
+    if (!match) return false;
+    const startHour = parseInt(match[1], 10);
+    const startMin = parseInt(match[2], 10);
+    
+    const checkInHour = checkInDateObj.getHours();
+    const checkInMin = checkInDateObj.getMinutes();
+    
+    const checkInTotalMins = checkInHour * 60 + checkInMin;
+    const shiftStartTotalMins = startHour * 60 + startMin;
+    
+    return checkInTotalMins > (shiftStartTotalMins + gracePeriod);
+  };
+
   const handlePunch = async () => {
     // 1. Check IP and Geofencing coordinates prior to executing API
     if (!officeWifi) {
-      showToast('Sai địa chỉ IP mạng văn phòng! Bạn cần kết nối đúng WiFi công ty.', 'error');
-      pushLog(`Chấm công thất bại: Thiết bị kết nối sai IP mạng công ty.`, 'error');
+      showToast(`Sai địa chỉ IP mạng văn phòng! Bạn cần kết nối đúng WiFi công ty (IP cho phép: ${allowedWifiIp}).`, 'error');
+      pushLog(`Chấm công thất bại: Thiết bị kết nối sai IP mạng công ty (IP: ${allowedWifiIp}).`, 'error');
       return;
     }
 
     if (!gpsWithinRange && !currentShift.toLowerCase().includes('online')) {
-      showToast('Bạn đang ở ngoài phạm vi công ty! Khoảng cách GPS thực tế > 100m.', 'error');
-      pushLog(`Chấm công thất bại: Tọa độ thiết bị nằm ngoài geofence (>100m).`, 'error');
+      showToast(`Bạn đang ở ngoài phạm vi công ty! Khoảng cách GPS thực tế > ${allowedDistance}m.`, 'error');
+      pushLog(`Chấm công thất bại: Tọa độ thiết bị nằm ngoài geofence (>${allowedDistance}m).`, 'error');
       return;
     }
 
@@ -137,6 +191,41 @@ export default function Dashboard() {
   // Determine if it is overtime based on simulated hours
   const isOvertimePeriod = () => {
     return time.getHours() >= 18;
+  };
+
+  const handleSaveProfile = async (e) => {
+    if (e) e.preventDefault();
+    if (!profileForm.fullName.trim() || !profileForm.email.trim()) {
+      showToast('Vui lòng điền đầy đủ Họ và tên và Email.', 'error');
+      return;
+    }
+
+    if (profileForm.phone && !validateVietnamesePhone(profileForm.phone)) {
+      showToast('Số điện thoại không đúng định dạng Việt Nam (phải gồm 10 chữ số bắt đầu bằng 03, 05, 07, 08, 09).', 'error');
+      return;
+    }
+
+    try {
+      const res = await apiCall('/auth/profile', 'PUT', {
+        fullName: profileForm.fullName.trim(),
+        email: profileForm.email.trim(),
+        phone: profileForm.phone.trim(),
+        cccd: profileForm.cccd.trim(),
+        dob: profileForm.dob,
+        gender: profileForm.gender,
+        address: profileForm.address.trim()
+      });
+
+      setCurrentUser(res.user);
+      setIsEditingProfile(false);
+      pushLog(`Nhân viên tự cập nhật thông tin cá nhân thành công.`, 'success');
+      showToast('Cập nhật thông tin cá nhân thành công!', 'success');
+      confetti({ particleCount: 30, spread: 25 });
+      await syncFromBackend();
+    } catch (err) {
+      showToast(err.message, 'error');
+      pushLog(`Lỗi tự cập nhật hồ sơ: ${err.message}`, 'error');
+    }
   };
 
   // Summary statistics widgets calculation
@@ -273,7 +362,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Accumulative Days */}
-        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4">
+        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4 hover-card-premium">
           <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
             <Award className="w-6 h-6" />
           </div>
@@ -284,7 +373,7 @@ export default function Dashboard() {
         </div>
 
         {/* Late days */}
-        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4">
+        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4 hover-card-premium">
           <div className="p-3 bg-amber-500/10 rounded-xl text-amber-400">
             <AlertTriangle className="w-6 h-6" />
           </div>
@@ -295,7 +384,7 @@ export default function Dashboard() {
         </div>
 
         {/* Leave remaining */}
-        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4">
+        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4 hover-card-premium">
           <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
             <Calendar className="w-6 h-6" />
           </div>
@@ -306,7 +395,7 @@ export default function Dashboard() {
         </div>
 
         {/* Overtime Hours */}
-        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4">
+        <div className="bg-slate-900/30 border border-slate-855 rounded-2xl p-5 shadow flex items-center gap-4 hover-card-premium">
           <div className="p-3 bg-purple-500/10 rounded-xl text-purple-400">
             <Clock className="w-6 h-6" />
           </div>
@@ -316,6 +405,169 @@ export default function Dashboard() {
           </div>
         </div>
 
+      </div>
+
+      {/* 4. Personal Profile Card */}
+      <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">
+        <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h3 className="font-bold text-slate-200">Thông tin Hồ sơ Cá nhân</h3>
+            <p className="text-slate-500 text-xs mt-0.5">Xem và tự điều chỉnh thông tin liên hệ, lý lịch cá nhân của bạn.</p>
+          </div>
+          {!isEditingProfile ? (
+            <button
+              onClick={() => {
+                setIsEditingProfile(true);
+                setProfileForm({
+                  fullName: currentUser.fullName,
+                  email: currentUser.email,
+                  phone: currentUser.phone || '',
+                  cccd: currentUser.cccd || '',
+                  dob: currentUser.dob || '',
+                  gender: currentUser.gender || 'Nam',
+                  address: currentUser.address || ''
+                });
+              }}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl text-xs font-semibold border border-slate-700/80 transition"
+            >
+              📝 Chỉnh sửa thông tin
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditingProfile(false)}
+                className="px-3.5 py-2 bg-slate-950 hover:bg-slate-850 text-slate-400 rounded-xl text-xs font-semibold transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 text-xs font-bold rounded-xl transition"
+              >
+                Lưu thay đổi
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="p-6">
+          {!isEditingProfile ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs">
+              <div>
+                <span className="text-slate-500 block mb-0.5">Họ và tên</span>
+                <span className="text-slate-200 font-semibold">{currentUser.fullName}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5">Địa chỉ Email</span>
+                <span className="text-slate-200 font-semibold text-wrap break-all">{currentUser.email}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5">Số điện thoại</span>
+                <span className="text-slate-200 font-semibold">{currentUser.phone || '—'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5">Số CCCD / Hộ chiếu</span>
+                <span className="text-slate-200 font-semibold">{currentUser.cccd || '—'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5">Ngày sinh</span>
+                <span className="text-slate-200 font-semibold">{formatDate(currentUser.dob) || '—'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5">Giới tính</span>
+                <span className="text-slate-200 font-semibold">{currentUser.gender || '—'}</span>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-slate-500 block mb-0.5">Địa chỉ thường trú</span>
+                <span className="text-slate-200 font-semibold">{currentUser.address || '—'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5 font-bold uppercase tracking-wider text-[10px]">Phòng ban</span>
+                <span className="text-slate-400 font-semibold">{currentUser.department || 'Chưa phân bổ'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5 font-bold uppercase tracking-wider text-[10px]">Chức vụ</span>
+                <span className="text-slate-400 font-semibold">{currentUser.position || 'Nhân sự chính thức'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5 font-bold uppercase tracking-wider text-[10px]">Quyền hạn hệ thống</span>
+                <span className="text-teal-400 font-bold uppercase">{currentUser.role}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block mb-0.5 font-bold uppercase tracking-wider text-[10px]">Thời hạn hợp đồng</span>
+                <span className="text-emerald-400 font-bold">{formatDate(currentUser.contractExpiry) || 'Vô thời hạn'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Họ và tên *</label>
+                <input
+                  type="text"
+                  value={profileForm.fullName}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Địa chỉ Email *</label>
+                <input
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Số điện thoại</label>
+                <input
+                  type="text"
+                  value={profileForm.phone}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Số CCCD / Hộ chiếu</label>
+                <input
+                  type="text"
+                  value={profileForm.cccd}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, cccd: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Ngày sinh</label>
+                <input
+                  type="date"
+                  value={profileForm.dob}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, dob: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Giới tính</label>
+                <select
+                  value={profileForm.gender}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, gender: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                >
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Địa chỉ thường trú</label>
+                <input
+                  type="text"
+                  value={profileForm.address}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
     </div>

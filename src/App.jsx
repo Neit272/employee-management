@@ -45,7 +45,9 @@ function AppContent() {
 
   return (
     <MainLayout>
-      {renderPage()}
+      <div key={currentPath} className="animate-fade-in flex-1 flex flex-col min-h-0">
+        {renderPage()}
+      </div>
       
       {/* Global locked overlay checking if profile details are incomplete */}
       <MandatoryUpdateModal />

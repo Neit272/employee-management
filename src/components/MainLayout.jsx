@@ -12,7 +12,11 @@ import {
   MapPin,
   Menu,
   Bell,
-  UserCheck
+  UserCheck,
+  RotateCcw,
+  AlertTriangle,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export default function MainLayout({ children }) {
@@ -25,10 +29,16 @@ export default function MainLayout({ children }) {
     gpsWithinRange,
     notifications,
     setNotifications,
-    showDialog
+    showDialog,
+    undoToast,
+    setUndoToast,
+    theme,
+    setTheme
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const handleLogout = () => {
     setIsLoggedIn(false);
@@ -51,8 +61,8 @@ export default function MainLayout({ children }) {
     { name: 'Dashboard Chấm công', path: '/dashboard', icon: LayoutDashboard, roles: ['NhanVien', 'KeToan', 'HR', 'Admin'] },
     { name: 'Lịch sử Chấm công', path: '/history', icon: History, roles: ['NhanVien', 'KeToan', 'HR', 'Admin'] },
     { name: 'Quản lý Đơn từ', path: '/requests', icon: FileText, roles: ['NhanVien', 'KeToan', 'HR', 'Admin'] },
-    { name: 'Phân hệ Nhân Sự', path: '/hr', icon: Users, roles: ['HR', 'Admin'] },
-    { name: 'Phân hệ Kế Toán', path: '/accounting', icon: BadgeCent, roles: ['KeToan', 'Admin'] },
+    { name: 'Phân hệ Nhân Sự', path: '/hr', icon: Users, roles: ['HR', 'KeToan', 'Admin'] },
+    { name: 'Phân hệ Kế Toán', path: '/accounting', icon: BadgeCent, roles: ['KeToan', 'HR', 'Admin'] },
     { name: 'Quản Trị Hệ Thống', path: '/admin', icon: Settings, roles: ['Admin'] },
   ];
 
@@ -81,19 +91,31 @@ export default function MainLayout({ children }) {
     <div className="h-screen w-full flex bg-[#080b11] text-slate-100 overflow-hidden relative">
       
       {/* Sidebar */}
-      <aside className="h-full w-64 bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col justify-between hidden md:flex shrink-0">
-        
-        <div>
-          {/* Logo Brand */}
-          <div className="h-20 flex items-center gap-3 px-6 border-b border-slate-800/80 bg-slate-950/20">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-              <span className="text-slate-950 font-black text-lg tracking-tighter">G</span>
+      {isSidebarOpen && (
+        <aside className="h-full w-64 bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 flex flex-col justify-between hidden md:flex shrink-0 animate-in slide-in-from-left duration-300">
+          
+          <div>
+            {/* Logo Brand */}
+            <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800/80 bg-slate-950/20">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                  <span className="text-slate-950 font-black text-lg tracking-tighter">G</span>
+                </div>
+                <div>
+                  <span className="font-extrabold text-slate-200 tracking-tight text-base">GENX PKS</span>
+                  <span className="block text-[9px] text-slate-500 font-semibold tracking-widest uppercase">HRM & Attendance</span>
+                </div>
+              </div>
+              
+              {/* Collapse Sidebar for desktop/laptop */}
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="hidden md:flex items-center justify-center text-slate-500 hover:text-slate-200 text-[10px] w-6 h-6 bg-slate-950 border border-slate-855 rounded-lg hover:border-slate-700 transition"
+                title="Ẩn thanh menu"
+              >
+                ✕
+              </button>
             </div>
-            <div>
-              <span className="font-extrabold text-slate-200 tracking-tight text-base">GENX PKS</span>
-              <span className="block text-[9px] text-slate-500 font-semibold tracking-widest uppercase">HRM & Attendance</span>
-            </div>
-          </div>
 
           {/* Navigation Links */}
           <nav className="p-4 space-y-1">
@@ -140,6 +162,7 @@ export default function MainLayout({ children }) {
           </button>
         </div>
       </aside>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
@@ -147,9 +170,22 @@ export default function MainLayout({ children }) {
         {/* Navbar */}
         <header className="h-20 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-6 z-20">
           <div className="flex items-center gap-4">
-            <button className="md:hidden text-slate-400 hover:text-slate-200">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden text-slate-400 hover:text-slate-200 focus:outline-none"
+            >
               <Menu className="w-6 h-6" />
             </button>
+            {/* Desktop toggle sidebar button (only shows when sidebar is hidden) */}
+            {!isSidebarOpen && (
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="hidden md:flex text-slate-450 hover:text-slate-200 focus:outline-none p-2 bg-slate-950 border border-slate-800 rounded-xl hover:border-slate-700 transition"
+                title="Hiện thanh menu"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+            )}
             <h2 className="text-lg font-bold text-slate-200 capitalize">
               {menuItems.find((item) => item.path === currentPath)?.name || 'Hệ thống'}
             </h2>
@@ -200,6 +236,15 @@ export default function MainLayout({ children }) {
                 <span className="hidden sm:inline">{gpsWithinRange ? 'Within Range' : 'Out of Geofence'}</span>
               </div>
             </div>
+
+            {/* Theme Toggle (Light/Dark) */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
+              title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-5 h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
+            </button>
 
             {/* Notification Bell */}
             <div className="relative">
@@ -275,6 +320,157 @@ export default function MainLayout({ children }) {
         <main className="flex-1 overflow-y-auto p-6 relative">
           {children}
         </main>
+      </div>
+      <UndoToast />
+
+      {/* Mobile Drawer Sidebar */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[1000] md:hidden animate-in fade-in duration-200">
+          {/* Backdrop overlay */}
+          <div 
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          {/* Sidebar Drawer panel */}
+          <aside className="fixed inset-y-0 left-0 w-64 bg-[#0d121f] border-r border-slate-850 flex flex-col justify-between z-50 animate-in slide-in-from-left duration-300">
+            <div>
+              {/* Logo Brand / Close button */}
+              <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                    <span className="text-slate-950 font-black text-lg tracking-tighter">G</span>
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-slate-200 tracking-tight text-base">GENX PKS</span>
+                    <span className="block text-[9px] text-slate-500 font-semibold tracking-widest uppercase">HRM & Attendance</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-slate-400 hover:text-slate-200 text-sm font-bold w-7 h-7 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Navigation Links */}
+              <nav className="p-4 space-y-1">
+                {allowedMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPath === item.path;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => {
+                        navigateTo(item.path);
+                        setIsMobileMenuOpen(false); // Close drawer after selection
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                        isActive
+                          ? 'bg-gradient-to-r from-teal-500/10 to-teal-500/0 text-teal-400 border-l-[3px] border-teal-500'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-teal-400' : 'text-slate-400'}`} />
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Profile Card & Logout */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-200 border border-slate-700 uppercase">
+                  {currentUser.fullName.split(' ').pop().substring(0, 2)}
+                </div>
+                <div className="overflow-hidden">
+                  <h4 className="text-sm font-bold text-slate-200 truncate leading-snug">{currentUser.fullName}</h4>
+                  <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full mt-1 ${getRoleBadgeColor(currentUser.role)}`}>
+                    {getRoleLabel(currentUser.role)}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-850 hover:bg-rose-500/10 hover:text-rose-400 text-slate-400 border border-slate-800 hover:border-rose-500/20 rounded-xl text-xs font-bold transition duration-200"
+              >
+                <LogOut className="w-4 h-4" />
+                Đăng xuất
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Subcomponent for Undo Toast Notification
+function UndoToast() {
+  const { undoToast, setUndoToast } = useApp();
+  const [progress, setProgress] = React.useState(100);
+  const [seconds, setSeconds] = React.useState(5);
+
+  React.useEffect(() => {
+    if (!undoToast) return;
+
+    setProgress(100);
+    setSeconds(5);
+
+    let elapsed = 0;
+    const interval = setInterval(() => {
+      elapsed += 100;
+      const pct = Math.max(0, 100 - (elapsed / 5000) * 100);
+      setProgress(pct);
+      setSeconds(Math.ceil((5000 - elapsed) / 1000));
+
+      if (elapsed >= 5000) {
+        clearInterval(interval);
+        if (undoToast.onConfirm) {
+          undoToast.onConfirm();
+        }
+        setUndoToast(null);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [undoToast]);
+
+  if (!undoToast) return null;
+
+  const handleUndoClick = () => {
+    if (undoToast.onUndo) {
+      undoToast.onUndo();
+    }
+    setUndoToast(null);
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[99999] max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 overflow-hidden animate-in slide-in-from-bottom duration-300">
+      <div 
+        className="absolute top-0 left-0 h-1 bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-100 ease-linear"
+        style={{ width: `${progress}%` }}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+          <div className="min-w-0">
+            <p className="text-xs text-slate-300 truncate font-medium">{undoToast.message}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Tự động thực hiện sau {seconds} giây...</p>
+          </div>
+        </div>
+        <button
+          onClick={handleUndoClick}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 hover:text-teal-400 text-slate-300 rounded-xl text-xs font-bold transition border border-slate-700 shrink-0"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Hoàn tác
+        </button>
       </div>
     </div>
   );
