@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, Folder, FileCheck, FileX, Download, Plus, Trash2, Edit2, AlertCircle, UserPlus, Lock, Unlock } from 'lucide-react';
+import { Settings, Folder, FileCheck, FileX, Download, Plus, Trash2, Edit2, AlertCircle, UserPlus, Lock, Unlock, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function Admin() {
@@ -682,6 +682,122 @@ export default function Admin() {
     }
   };
 
+  const handleExportPDF = () => {
+    try {
+      pushLog('Admin đang khởi tạo kết xuất bảng công PDF...');
+      const tableEl = document.querySelector('table'); // Matrix table
+      if (!tableEl) {
+        throw new Error('Không tìm thấy bảng công để xuất file.');
+      }
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Không thể mở cửa sổ in. Vui lòng cho phép pop-up trên trình duyệt.');
+      }
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>BẢNG TỔNG HỢP CÔNG THÁNG ${matrixMonth}/${matrixYear}</title>
+            <style>
+              body {
+                font-family: 'Arial', sans-serif;
+                padding: 30px;
+                color: #0f172a;
+                background: #ffffff;
+              }
+              h2 {
+                text-align: center;
+                margin-top: 0;
+                margin-bottom: 5px;
+                color: #0f172a;
+                font-size: 18px;
+              }
+              .subtitle {
+                text-align: center;
+                margin-bottom: 25px;
+                color: #475569;
+                font-size: 12px;
+                font-style: italic;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+                font-size: 8px;
+              }
+              th, td {
+                border: 1px solid #cbd5e1;
+                padding: 6px 3px;
+                text-align: center;
+              }
+              th {
+                background-color: #f8fafc;
+                font-weight: bold;
+                color: #1e293b;
+              }
+              td {
+                color: #334155;
+              }
+              .legend {
+                margin-top: 30px;
+                font-size: 10px;
+                border-top: 1px dashed #cbd5e1;
+                padding-top: 15px;
+                color: #475569;
+              }
+              .legend-title {
+                font-weight: bold;
+                margin-bottom: 5px;
+                color: #0f172a;
+              }
+              .legend-item {
+                margin-right: 20px;
+                display: inline-block;
+              }
+              @media print {
+                @page {
+                  size: A4 landscape;
+                  margin: 10mm;
+                }
+                body {
+                  padding: 0;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <h2>BẢNG TỔNG HỢP CÔNG CHI TIẾT</h2>
+            <div class="subtitle">Tháng ${matrixMonth}/${matrixYear} — Công ty GENX PKS</div>
+            ${tableEl.outerHTML}
+            <div class="legend">
+              <div class="legend-title">Chú thích ký hiệu chấm công:</div>
+              <span class="legend-item"><strong>X:</strong> Đi làm bình thường</span>
+              <span class="legend-item"><strong>P:</strong> Nghỉ phép năm có hưởng lương</span>
+              <span class="legend-item"><strong>Ro:</strong> Nghỉ vắng không phép / Nghỉ không lương</span>
+              <span class="legend-item"><strong>-:</strong> Không có ca trực / Chưa chấm công</span>
+            </div>
+            <script>
+              window.onload = function() {
+                document.querySelectorAll('th, td').forEach(function(el) {
+                  el.style.position = 'static';
+                  el.style.backgroundColor = 'transparent';
+                });
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      pushLog('Bắt đầu in/xuất tệp tin PDF bảng công thành công.', 'success');
+    } catch (err) {
+      pushLog(`Lỗi in bảng công PDF: ${err.message}`, 'error');
+      showDialog({ title: 'Lỗi xuất file PDF', message: err.message, type: 'error' });
+    }
+  };
+
   return (
     <div className="space-y-8">
       
@@ -1014,13 +1130,24 @@ export default function Admin() {
             )}
             {/* Export excel validator constraints */}
             {currentUser.role === 'Admin' && (
-              <button
-                onClick={handleExport}
-                className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
-              >
-                <Download className="w-4 h-4" />
-                Xuất CSV
-              </button>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+                >
+                  <Download className="w-4 h-4" />
+                  Xuất CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+                >
+                  <FileText className="w-4 h-4" />
+                  Xuất PDF
+                </button>
+              </div>
             )}
           </div>
         </div>

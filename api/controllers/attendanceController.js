@@ -47,14 +47,13 @@ export const checkIn = async (req, res) => {
     const { lat, lng, wifiIp, shiftName, checkInTimeStr } = req.body;
     const employeeId = req.user.employeeId;
 
-    // Check IP
+    const isOnlineShift = shiftName && shiftName.toLowerCase().includes('online');
+
+    // Check IP if not a Remote shift (Online)
     const clientIp = wifiIp || req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
-    if (!isIpAllowed(clientIp)) {
+    if (!isOnlineShift && !isIpAllowed(clientIp)) {
       return res.status(400).json({ error: 'Sai địa chỉ IP mạng văn phòng! Bạn cần kết nối đúng WiFi công ty.' });
     }
-
-    // Check GPS range if not a Remote shift (Online)
-    const isOnlineShift = shiftName && shiftName.toLowerCase().includes('online');
     if (!isOnlineShift) {
       const companyLat = parseFloat(process.env.COMPANY_LAT || '21.028511');
       const companyLng = parseFloat(process.env.COMPANY_LNG || '105.854167');

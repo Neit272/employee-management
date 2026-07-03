@@ -7,7 +7,8 @@ const shifts = [
   { id: 'morning', name: 'Ca Sáng (08:00 - 12:00)', startHour: 8, endHour: 12 },
   { id: 'afternoon', name: 'Ca Chiều (13:30 - 17:30)', startHour: 13.5, endHour: 17.5 },
   { id: 'split', name: 'Ca Gãy (08:00 - 17:30)', startHour: 8, endHour: 17.5 },
-  { id: 'ot', name: 'Tăng ca (18:00 - 21:00)', startHour: 18, endHour: 21 }
+  { id: 'ot', name: 'Tăng ca (18:00 - 21:00)', startHour: 18, endHour: 21 },
+  { id: 'online', name: 'Ca Online (Làm việc từ xa)', startHour: 8, endHour: 17.5 }
 ];
 
 export default function Dashboard() {
@@ -185,17 +186,21 @@ export default function Dashboard() {
   };
 
   const handlePunch = async () => {
-    // 1. Check IP and Geofencing coordinates prior to executing API
-    if (!officeWifi) {
-      showToast(`Sai địa chỉ IP mạng văn phòng! Bạn cần kết nối đúng WiFi công ty (IP cho phép: ${allowedWifiIp}).`, 'error');
-      pushLog(`Chấm công thất bại: Thiết bị kết nối sai IP mạng công ty (IP: ${allowedWifiIp}).`, 'error');
-      return;
-    }
+    const isOnlineShift = currentShift && currentShift.toLowerCase().includes('online');
 
-    if (!gpsWithinRange && !currentShift.toLowerCase().includes('online')) {
-      showToast(`Bạn đang ở ngoài phạm vi công ty! Khoảng cách GPS thực tế > ${allowedDistance}m.`, 'error');
-      pushLog(`Chấm công thất bại: Tọa độ thiết bị nằm ngoài geofence (>${allowedDistance}m).`, 'error');
-      return;
+    // 1. Check IP and Geofencing coordinates prior to executing API if not a remote shift
+    if (!isOnlineShift) {
+      if (!officeWifi) {
+        showToast(`Sai địa chỉ IP mạng văn phòng! Bạn cần kết nối đúng WiFi công ty (IP cho phép: ${allowedWifiIp}).`, 'error');
+        pushLog(`Chấm công thất bại: Thiết bị kết nối sai IP mạng công ty (IP: ${allowedWifiIp}).`, 'error');
+        return;
+      }
+
+      if (!gpsWithinRange) {
+        showToast(`Bạn đang ở ngoài phạm vi công ty! Khoảng cách GPS thực tế > ${allowedDistance}m.`, 'error');
+        pushLog(`Chấm công thất bại: Tọa độ thiết bị nằm ngoài geofence (>${allowedDistance}m).`, 'error');
+        return;
+      }
     }
 
     // Debounce/Throttle constraint: immediate lock & loading spin
@@ -400,11 +405,11 @@ export default function Dashboard() {
           <div className="flex flex-col items-center justify-center shrink-0 w-full md:w-auto">
             <button
               onClick={handlePunch}
-              disabled={punchLoading || isSyncing || (!officeWifi && !gpsWithinRange) || (!isCheckedIn && hasCheckedOutCurrentShiftToday())}
+              disabled={punchLoading || isSyncing || (!currentShift?.toLowerCase().includes('online') && !officeWifi && !gpsWithinRange) || (!isCheckedIn && hasCheckedOutCurrentShiftToday())}
               className={`w-44 h-44 rounded-full flex flex-col items-center justify-center gap-2.5 font-bold transition-all duration-300 transform active:scale-95 border-4 focus:outline-none select-none relative ${
                 punchLoading || isSyncing
                   ? 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed'
-                  : !officeWifi || !gpsWithinRange
+                  : !currentShift?.toLowerCase().includes('online') && (!officeWifi || !gpsWithinRange)
                     ? 'bg-slate-850 border-slate-800 text-slate-500 cursor-not-allowed'
                     : !isCheckedIn && hasCheckedOutCurrentShiftToday()
                       ? 'punch-btn-disabled-completed text-slate-500 cursor-not-allowed'
@@ -420,7 +425,7 @@ export default function Dashboard() {
                     {isSyncing ? 'Đang đồng bộ...' : 'Đang xử lý...'}
                   </span>
                 </>
-              ) : !officeWifi || !gpsWithinRange ? (
+              ) : !currentShift?.toLowerCase().includes('online') && (!officeWifi || !gpsWithinRange) ? (
                 <>
                   <Compass className="w-8 h-8 text-slate-500" />
                   <span className="text-sm tracking-wide">Bị khóa do IP/GPS</span>
