@@ -195,6 +195,7 @@ export const getHistory = async (req, res) => {
   try {
     const { fromDate, toDate } = req.query;
     const employeeId = req.user.employeeId;
+    const role = req.user.role;
 
     if (!fromDate || !toDate) {
       return res.status(400).json({ error: 'Vui lòng cung cấp khoảng ngày tra cứu (fromDate, toDate).' });
@@ -209,11 +210,20 @@ export const getHistory = async (req, res) => {
       return res.status(400).json({ error: 'Khoảng thời gian tra cứu lịch sử không được vượt quá 31 ngày.' });
     }
 
-    const result = await query(`
-      SELECT * FROM attendance 
-      WHERE employee_id = $1 AND date >= $2 AND date <= $3 
-      ORDER BY date DESC
-    `, [employeeId, fromDate, toDate]);
+    let result;
+    if (role === 'Admin' || role === 'HR' || role === 'KeToan') {
+      result = await query(`
+        SELECT * FROM attendance 
+        WHERE date >= $1 AND date <= $2 
+        ORDER BY date DESC, employee_id ASC
+      `, [fromDate, toDate]);
+    } else {
+      result = await query(`
+        SELECT * FROM attendance 
+        WHERE employee_id = $1 AND date >= $2 AND date <= $3 
+        ORDER BY date DESC
+      `, [employeeId, fromDate, toDate]);
+    }
 
     res.json({ history: result.rows.map(row => mapAttendanceToCamel(row)) });
 

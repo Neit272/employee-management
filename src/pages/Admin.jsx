@@ -654,7 +654,7 @@ export default function Admin() {
         `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll`,
         {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('employeeId') || ''}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
         }
       );
       if (!res.ok) {
@@ -685,7 +685,7 @@ export default function Admin() {
   const handleExportPDF = () => {
     try {
       pushLog('Admin đang khởi tạo kết xuất bảng công PDF...');
-      const tableEl = document.querySelector('table'); // Matrix table
+      const tableEl = document.getElementById('attendance-matrix-table');
       if (!tableEl) {
         throw new Error('Không tìm thấy bảng công để xuất file.');
       }
@@ -1153,7 +1153,7 @@ export default function Admin() {
         </div>
 
         <div className="overflow-auto max-w-full min-h-[320px] max-h-[500px]">
-          <table className="w-full text-left text-xs border-collapse">
+          <table id="attendance-matrix-table" className="w-full text-left text-xs border-collapse">
             <thead className="sticky top-0 z-30">
               <tr className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-850">
                 <th className="px-4 py-3 shrink-0 min-w-[120px] sticky left-0 top-0 bg-slate-950 border-r border-slate-800 z-40">Nhân viên</th>

@@ -167,6 +167,42 @@ export default function Accounting() {
     return { workedDays, lateDays, earlyDays, absentDays, leaveDays, totalHours, lateMinutes, earlyMinutes };
   };
 
+  const handleExportExcel = async () => {
+    try {
+      pushLog('Kế toán đang kết xuất bảng công CSV/Excel từ hệ thống...');
+      const res = await fetch(
+        `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll`,
+        {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Lỗi xuất bảng công.');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `BangCong_KeToan_${summaryMonth}_${summaryYear}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      pushLog('Kế toán kết xuất thành công bảng công tổng hợp CSV/Excel.', 'success');
+      showDialog({
+        title: 'Xuất file thành công',
+        message: `Bảng tổng hợp công tháng ${summaryMonth}/${summaryYear} đã được xuất thành công và tải xuống thiết bị.`,
+        type: 'success'
+      });
+    } catch (err) {
+      pushLog(`Lỗi xuất bảng công: ${err.message}`, 'error');
+      showDialog({ title: 'Lỗi xuất file', message: err.message, type: 'error' });
+    }
+  };
+
   // PDF Upload state
   const [uploadedFile, setUploadedFile] = useState(null);
   const [docCategory, setDocCategory] = useState('Chứng từ thanh toán');
@@ -598,14 +634,7 @@ export default function Accounting() {
               ))}
             </select>
             <button
-              onClick={() => {
-                pushLog(`Kế toán xuất bảng tổng hợp công tháng ${summaryMonth}/${summaryYear}.`, 'success');
-                showDialog({
-                  title: 'Xuất file thành công',
-                  message: `Bảng tổng hợp công tháng ${summaryMonth}/${summaryYear} đã được xuất ra file Excel thành công. Kế toán có thể mở file để tính toán lương thủ công.`,
-                  type: 'success'
-                });
-              }}
+              onClick={handleExportExcel}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
             >
               <Download className="w-3.5 h-3.5" />

@@ -76,7 +76,7 @@ app.put('/api/admin/users/:employeeId', requireRole(['HR', 'Admin']), adminContr
 
 app.post('/api/admin/manual-override', requireRole(['Admin']), adminController.manualAttendanceOverride);
 app.get('/api/admin/matrix-grid', requireRole(['Admin']), adminController.getMatrixGrid);
-app.get('/api/admin/export-payroll', requireRole(['Admin']), adminController.exportPayrollData);
+app.get('/api/admin/export-payroll', requireRole(['Admin', 'KeToan']), adminController.exportPayrollData);
 
 // Logs
 app.get('/api/admin/logs', adminController.getLogs);
