@@ -400,13 +400,17 @@ export const AppProvider = ({ children }) => {
     pushLog(`Chuyển sang tài khoản: ${user.fullName} (${user.role})`, 'success');
   };
 
-  // Logout current user and clear states
+  // Logout current user and clear states (Reverted & optimized with deferred state cleanup)
   const logout = () => {
-    setCurrentUser(null);
+    setIsLoggedIn(false);
+    localStorage.removeItem('genx_user');
     setIsCheckedIn(false);
     setCheckInTime(null);
     setCurrentPath('/dashboard');
     pushLog('Đã đăng xuất tài khoản thành công.', 'info');
+    setTimeout(() => {
+      setCurrentUser(null);
+    }, 200);
   };
 
   // Synchronize path and verify route guards
