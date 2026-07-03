@@ -126,6 +126,9 @@ Các Secured Routes tại [index.js](./api/index.js) được bảo vệ bằng 
 ### 4.2. Cơ chế Chấm công Đa phương thức (WiFi On-site & Geofencing)
 *   **WiFi IP văn phòng:** Thiết bị kết nối phải có địa chỉ IP trùng với danh sách IP chi nhánh được Admin cấu hình.
 *   **Geofencing GPS:** Khoảng cách vị trí thiết bị so với tọa độ văn phòng (Mặc định: `21.028511, 105.854167`) phải `<=` bán kính cho phép (ví dụ: `100` mét).
+*   **Ngoại lệ Ca làm việc Từ xa (Online Shift):**
+    *   Nếu nhân viên chọn ca có tên chứa chữ `"online"` (ví dụ: `Ca Online (Làm việc từ xa)`), hệ thống sẽ tự động bỏ qua toàn bộ kiểm tra IP văn phòng và định vị GPS Geofencing.
+    *   Tuy nhiên, tại Backend, hệ thống bắt buộc kiểm tra xem nhân viên đó có đơn đề xuất (loại nghỉ phép hoặc đăng ký làm online) ở trạng thái đã phê duyệt (`status = 'Approved'`) bao phủ ngày hôm nay trong bảng `requests` hay không. Nếu không có đơn được duyệt hợp lệ, backend sẽ chặn check-in để đảm bảo tính kỷ luật.
 *   **Khóa trạng thái Chọn Ca:**
     *   Hệ thống gợi ý ca làm việc gần nhất dựa theo giờ thực tế.
     *   Sau khi **Check-in** thành công, ô chọn ca bị khóa cứng (read-only) để tránh việc đổi ca làm việc giữa chừng.
@@ -136,6 +139,10 @@ Các Secured Routes tại [index.js](./api/index.js) được bảo vệ bằng 
 *   Đối với các tài liệu quan trọng được đánh dấu `is_core = true` trong phân hệ Kế toán, khi bấm tải xuống (Download), hệ thống kích hoạt bảo mật 2 lớp:
     1.  **Lớp 1:** Nhập mã bảo mật mật khẩu phân hệ (Pass Core).
     2.  **Lớp 2:** Mã xác thực OTP gồm 6 chữ số được gửi qua email (giới hạn thời gian hiệu lực 5 phút). OTP sẽ bị xóa hoàn toàn khỏi DB ngay khi xác thực thành công.
+
+### 4.4. Cơ chế Kết xuất Dữ liệu Bảng công (Export Data)
+*   **Xuất CSV / Excel:** Cả Admin (tại Tab Quản trị) và Kế toán (tại Phân hệ Kế toán) đều có thể xuất dữ liệu bảng công ra tệp tin CSV/Excel từ database. Tính năng này tự động áp dụng bộ lọc theo tháng và năm được chỉ định trên bộ lọc giao diện để truy xuất chính xác các dòng chấm công tương ứng trong cơ sở dữ liệu.
+*   **Xuất PDF:** Admin có quyền xuất bản in PDF trực quan cho Bảng tổng hợp công Grid Matrix của tháng/năm hiện hành nhờ công cụ in của trình duyệt (A4 khổ ngang Landscape), loại bỏ các CSS định vị cuộn (sticky layout) để trang in đẹp mắt và đầy đủ thông tin nhất.
 
 ---
 
