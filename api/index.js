@@ -45,6 +45,7 @@ app.use('/api', authMiddleware);
 // User info details
 app.get('/api/auth/me', authController.getCurrentUser);
 app.post('/api/auth/update-profile', authController.updateProfile);
+app.put('/api/auth/profile', authController.updateProfile);
 
 // Attendance
 app.post('/api/attendance/check-in', attendanceController.checkIn);

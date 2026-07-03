@@ -4,26 +4,27 @@ import { ShieldAlert, Send } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function MandatoryUpdateModal() {
-  const { currentUser, setCurrentUser, departments, positions, pushLog } = useApp();
+  const { currentUser, setCurrentUser, departments, positions, pushLog, apiCall } = useApp();
 
   // Only render if logged in and profile is NOT complete
   if (!currentUser || currentUser.isProfileComplete) {
     return null;
   }
 
-  const [cccd, setCccd] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [department, setDepartment] = useState('');
-  const [position, setPosition] = useState('');
-  const [gender, setGender] = useState('');
-  const [dob, setDob] = useState('');
+  // Pre-fill states from database to avoid forcing re-entry and allow selective update of missing fields
+  const [cccd, setCccd] = useState(currentUser.cccd || '');
+  const [phone, setPhone] = useState(currentUser.phone || '');
+  const [address, setAddress] = useState(currentUser.address || '');
+  const [startDate, setStartDate] = useState(currentUser.startDate || '');
+  const [department, setDepartment] = useState(currentUser.department || '');
+  const [position, setPosition] = useState(currentUser.position || '');
+  const [gender, setGender] = useState(currentUser.gender || 'Nam');
+  const [dob, setDob] = useState(currentUser.dob || '');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -46,10 +47,8 @@ export default function MandatoryUpdateModal() {
     setLoading(true);
     pushLog(`Đang gửi biểu mẫu cập nhật thông tin bắt buộc cho mã NV: ${currentUser.employeeId}...`);
 
-    // Simulate API Delay
-    setTimeout(() => {
-      const updatedUser = {
-        ...currentUser,
+    try {
+      const res = await apiCall('/auth/profile', 'PUT', {
         cccd,
         phone,
         address,
@@ -57,16 +56,18 @@ export default function MandatoryUpdateModal() {
         department,
         position,
         gender,
-        dob,
-        isProfileComplete: true // Mark profile as fully complete to unlock the screen
-      };
+        dob
+      });
 
-      setCurrentUser(updatedUser);
-      setLoading(false);
-      
+      setCurrentUser(res.user);
       pushLog(`Cập nhật thông tin hồ sơ cá nhân thành công cho mã NV: ${currentUser.employeeId}`, 'success');
       confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-    }, 1200);
+    } catch (err) {
+      setError(err.message || 'Lỗi hệ thống khi cập nhật hồ sơ.');
+      pushLog(`Cập nhật hồ sơ bắt buộc thất bại: ${err.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
