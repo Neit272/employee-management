@@ -1,5 +1,16 @@
 import { query } from '../config/db.js';
 
+const validateVietnamesePhone = (phone) => {
+  if (!phone) return true;
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+  return /^(0|84|\+84)(3|5|7|8|9)([0-9]{8})$/.test(cleanPhone);
+};
+
+const validateCccd = (cccd) => {
+  if (!cccd) return true;
+  return /^[0-9]{12}$/.test(cccd.trim());
+};
+
 const mapUserToCamel = (row) => {
   if (!row) return null;
   return {
@@ -114,6 +125,18 @@ export const updateUserAccount = async (req, res) => {
     const { employeeId } = req.params;
     const { role, department, position, isBlocked, blockReason, fullName, email, phone, cccd, dob, gender, address, startDate, isProfileComplete, contractExpiry, adminVerificationCode } = req.body;
     const currentUser = req.user;
+
+    if (phone !== undefined && phone !== null && phone.trim() !== '') {
+      if (!validateVietnamesePhone(phone)) {
+        return res.status(400).json({ error: 'Số điện thoại không đúng định dạng Việt Nam (phải gồm 10 chữ số bắt đầu bằng 03, 05, 07, 08, 09).' });
+      }
+    }
+
+    if (cccd !== undefined && cccd !== null && cccd.trim() !== '') {
+      if (!validateCccd(cccd)) {
+        return res.status(400).json({ error: 'Số CCCD không hợp lệ (phải gồm đúng 12 chữ số quốc gia).' });
+      }
+    }
 
     const userRes = await query('SELECT * FROM users WHERE employee_id = $1', [employeeId]);
     if (userRes.rows.length === 0) {

@@ -53,6 +53,16 @@ export default function Requests() {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
+    // Check extension: .jpg, .png, .pdf
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
+    const fileExt = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedExtensions.includes(fileExt)) {
+      setFormError('Định dạng tệp đính kèm không hợp lệ! Hệ thống chỉ chấp nhận các định dạng tệp: .jpg, .png, .pdf');
+      setFile(null);
+      e.target.value = null;
+      return;
+    }
+
     // Check size limit: 5MB
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (selectedFile.size > maxSize) {

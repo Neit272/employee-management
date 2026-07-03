@@ -35,6 +35,17 @@ const sendEmailNotification = async (to, subject, textContent) => {
   }
 };
 
+const validateVietnamesePhone = (phone) => {
+  if (!phone) return true;
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+  return /^(0|84|\+84)(3|5|7|8|9)([0-9]{8})$/.test(cleanPhone);
+};
+
+const validateCccd = (cccd) => {
+  if (!cccd) return true;
+  return /^[0-9]{12}$/.test(cccd.trim());
+};
+
 export const register = async (req, res) => {
   try {
     const { fullName, email, password, confirmPassword } = req.body;
@@ -129,6 +140,18 @@ export const updateProfile = async (req, res) => {
   try {
     const employeeId = req.user.employeeId;
     const { fullName, email, cccd, phone, address, startDate, department, position, gender, dob } = req.body;
+
+    if (phone !== undefined && phone !== null && phone.trim() !== '') {
+      if (!validateVietnamesePhone(phone)) {
+        return res.status(400).json({ error: 'Số điện thoại không đúng định dạng Việt Nam (phải gồm 10 chữ số bắt đầu bằng 03, 05, 07, 08, 09).' });
+      }
+    }
+
+    if (cccd !== undefined && cccd !== null && cccd.trim() !== '') {
+      if (!validateCccd(cccd)) {
+        return res.status(400).json({ error: 'Số CCCD không hợp lệ (phải gồm đúng 12 chữ số quốc gia).' });
+      }
+    }
 
     // Fetch existing user to merge fields
     const userRes = await query('SELECT * FROM users WHERE employee_id = $1', [employeeId]);
