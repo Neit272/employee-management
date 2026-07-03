@@ -72,12 +72,15 @@ export const checkIn = async (req, res) => {
       const hasApprovedOnline = await query(`
         SELECT * FROM requests 
         WHERE employee_id = $1 
-          AND LOWER(type) LIKE '%nghĩ%' 
+          AND (LOWER(type) LIKE '%nghĩ%' OR LOWER(type) LIKE '%online%' OR LOWER(type) LIKE '%ngoại%' OR LOWER(type) LIKE '%xa%')
           AND status = 'Approved' 
           AND from_date <= $2 
           AND to_date >= $3
       `, [employeeId, todayStr, todayStr]);
-      console.log(`Checking remote leave approved for ${employeeId}: ${hasApprovedOnline.rows.length > 0}`);
+      
+      if (hasApprovedOnline.rows.length === 0) {
+        return res.status(400).json({ error: 'Chấm công ca online thất bại: Bạn không có đơn nghỉ phép hoặc đơn đăng ký làm việc online được duyệt (Approved) khớp với ngày hôm nay.' });
+      }
     }
 
     // Check duplicate checkin

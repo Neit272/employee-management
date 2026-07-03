@@ -361,8 +361,19 @@ export const getMatrixGrid = async (req, res) => {
 
 export const exportPayrollData = async (req, res) => {
   try {
+    const { month, year } = req.query;
     const usersRes = await query('SELECT employee_id, full_name, department FROM users');
-    const historyRes = await query('SELECT * FROM attendance ORDER BY date DESC, employee_id ASC');
+    
+    let historyRes;
+    if (month && year) {
+      const paddedMonth = String(month).padStart(2, '0');
+      historyRes = await query(
+        `SELECT * FROM attendance WHERE date LIKE $1 ORDER BY date DESC, employee_id ASC`,
+        [`${year}-${paddedMonth}-%`]
+      );
+    } else {
+      historyRes = await query('SELECT * FROM attendance ORDER BY date DESC, employee_id ASC');
+    }
 
     if (historyRes.rows.length === 0) {
       return res.status(400).json({ error: 'Bảng công hiện tại trống, không thể xuất tệp tin dữ liệu.' });

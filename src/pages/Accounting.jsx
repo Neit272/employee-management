@@ -171,7 +171,7 @@ export default function Accounting() {
     try {
       pushLog('Kế toán đang kết xuất bảng công CSV/Excel từ hệ thống...');
       const res = await fetch(
-        `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll`,
+        `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll?month=${summaryMonth}&year=${summaryYear}`,
         {
           method: 'GET',
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }

@@ -651,7 +651,7 @@ export default function Admin() {
     try {
       pushLog('Admin đang kết xuất bảng công CSV từ hệ thống...');
       const res = await fetch(
-        `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll`,
+        `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll?month=${matrixMonth}&year=${matrixYear}`,
         {
           method: 'GET',
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
