@@ -216,3 +216,7 @@
 .animate-slide-in-right {
   animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+.punch-btn-disabled-completed {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(51, 65, 85, 0.6) !important;
+}

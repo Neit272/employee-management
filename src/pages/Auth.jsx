@@ -443,7 +443,7 @@ export default function Auth() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-teal-300 tracking-wide">Mã OTP Khôi Phục (Demo)</h4>
-                <p className="text-[11px] text-slate-300 mt-0.5">Tài khoản: <span className="text-teal-200 font-medium">{otpToast.email}</span></p>
+                <p className="text-[11px] text-teal-200 mt-0.5 font-medium">Tài khoản: {otpToast.email}</p>
               </div>
             </div>
             <button 
@@ -481,8 +481,8 @@ export default function Auth() {
               </button>
             </div>
           </div>
-          <p className="text-[11px] text-slate-300 mt-3 text-center leading-relaxed">
-            Hệ thống đã lưu mã OTP này vào database. Sử dụng mã này điền vào ô xác thực phía dưới để hoàn tất đổi mật khẩu.
+          <p className="text-[11px] text-teal-200 mt-3 text-center leading-relaxed font-medium">
+            Sử dụng mã này điền vào ô xác thực phía dưới để hoàn tất đổi mật khẩu.
           </p>
         </div>
       )}

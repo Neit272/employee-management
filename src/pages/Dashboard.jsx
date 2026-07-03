@@ -357,7 +357,7 @@ export default function Dashboard() {
                   : !officeWifi || !gpsWithinRange
                     ? 'bg-slate-850 border-slate-800 text-slate-500 cursor-not-allowed'
                     : !isCheckedIn && hasCheckedOutCurrentShiftToday()
-                      ? 'bg-slate-800/80 border-slate-700/60 text-slate-500 cursor-not-allowed'
+                      ? 'punch-btn-disabled-completed text-slate-500 cursor-not-allowed'
                       : isCheckedIn
                         ? 'bg-gradient-to-br from-rose-500 to-orange-600 hover:from-rose-600 hover:to-orange-700 border-rose-400 text-slate-950 glow-red'
                         : 'bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 border-emerald-300 text-slate-950 glow-green'
@@ -377,8 +377,8 @@ export default function Dashboard() {
                 </>
               ) : !isCheckedIn && hasCheckedOutCurrentShiftToday() ? (
                 <>
-                  <CheckCircle2 className="w-8 h-8 text-slate-500" />
-                  <span className="text-sm tracking-wide text-center px-3">Ca này đã hoàn thành</span>
+                  <CheckCircle2 className="w-8 h-8" style={{ color: '#64748b' }} />
+                  <span className="text-sm tracking-wide text-center px-3" style={{ color: '#64748b' }}>Ca này đã hoàn thành</span>
                 </>
               ) : isCheckedIn ? (
                 <>
