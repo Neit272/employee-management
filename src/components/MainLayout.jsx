@@ -251,9 +251,9 @@ export default function MainLayout({ children }) {
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="relative p-1.5 sm:p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
               >
-                <Bell className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-rose-500 rounded-full flex items-center justify-center text-[9px] font-black text-slate-100 animate-pulse">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center text-[10px] font-black text-slate-100 animate-pulse">
                     {notifications.filter(n => !n.read).length}
                   </span>
                 )}
@@ -301,7 +301,7 @@ export default function MainLayout({ children }) {
                           <div className="flex-1 min-w-0">
                             <h5 className="font-bold text-xs text-slate-250 flex justify-between gap-2">
                               <span className="truncate">{notif.title}</span>
-                              <span className="text-[9px] text-slate-500 shrink-0 font-normal">{notif.time}</span>
+                              <span className="text-[9px] text-slate-550 shrink-0 font-normal">{notif.time}</span>
                             </h5>
                             <p className="text-[11px] text-slate-400 mt-1 leading-relaxed break-words">{notif.description}</p>
                           </div>
@@ -319,7 +319,7 @@ export default function MainLayout({ children }) {
               className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
               title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
             >
-              {theme === 'dark' ? <Sun className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
             </button>
           </div>
         </header>
