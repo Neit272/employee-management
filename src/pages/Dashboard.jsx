@@ -532,7 +532,7 @@ export default function Dashboard() {
               }}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl text-xs font-semibold border border-slate-700/80 transition"
             >
-              📝 Chỉnh sửa thông tin
+              Chỉnh sửa thông tin
             </button>
           ) : (
             <div className="flex gap-2">

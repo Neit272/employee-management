@@ -1,5 +1,5 @@
 # TÀI LIỆU KỸ THUẬT VÀ HƯỚNG DẪN BÀN GIAO HỆ THỐNG
-## HỆ THỐNG QUẢN LÝ NHÂN SỰ & CHẤM CÔNG NỘI BỘ GENX PKS
+## HỆ THỐNG QUẢN LÝ NHÂN SỰ & CHẤM CÔNG NỘI BỘ NEXUS HRM
 
 Hệ thống được thiết kế dưới dạng Single Page Application (SPA) xây dựng trên nền tảng **React + Vite + Tailwind CSS**, kết nối bất đồng bộ với **Node.js (Express)** máy chủ và cơ sở dữ liệu **Supabase PostgreSQL**. Hệ thống tối ưu hóa quy trình quản lý nhân sự, tự động hóa chấm công đa phương thức và bảo mật tài liệu số hóa cho doanh nghiệp.
 

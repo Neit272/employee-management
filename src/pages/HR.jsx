@@ -694,8 +694,8 @@ export default function HR() {
                   <span className="text-[10px] text-slate-500 block font-bold uppercase tracking-wider mb-2">Tài liệu hợp đồng đính kèm</span>
                   {selectedUserForDetails.contractFile ? (
                     <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded-lg border border-slate-800">
-                      <span className="text-slate-250 font-mono text-xs flex items-center gap-1.5">
-                        📄 {selectedUserForDetails.contractFile}
+                      <span className="text-slate-255 font-mono text-xs flex items-center gap-1.5">
+                        {selectedUserForDetails.contractFile}
                       </span>
                       <button
                         onClick={() => {
@@ -837,7 +837,7 @@ export default function HR() {
                     }}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-350 rounded-xl text-xs font-semibold border border-slate-700/80 transition flex items-center gap-1.5"
                   >
-                    ✏️ Sửa hồ sơ
+                    Sửa hồ sơ
                   </button>
 
                   <div className="relative">

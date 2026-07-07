@@ -491,7 +491,7 @@ export default function Accounting() {
                     onClick={() => setIs2FAPhase('none')}
                     className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-xl text-rose-400 font-bold transition border border-rose-900/20"
                   >
-                    🔒 Khóa thư mục
+                    Khóa thư mục
                   </button>
                 </div>
               </div>
