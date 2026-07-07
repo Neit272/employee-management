@@ -245,15 +245,6 @@ export default function MainLayout({ children }) {
           {/* Right Header Controls */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
 
-            {/* Theme Toggle (Light/Dark) */}
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
-              title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
-            >
-              {theme === 'dark' ? <Sun className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
-            </button>
-
             {/* Notification Bell */}
             <div className="relative">
               <button 
@@ -270,7 +261,7 @@ export default function MainLayout({ children }) {
 
               {/* Real-time Notifications Dropdown Menu */}
               {showNotifications && (
-                <div className="absolute right-0 top-12 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-[999] overflow-hidden animate-in fade-in duration-200">
+                <div className="absolute right-[-48px] sm:right-0 top-12 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-[999] overflow-hidden animate-in fade-in duration-200">
                   <div className="p-4 border-b border-slate-800 bg-slate-950/40 flex justify-between items-center">
                     <span className="font-bold text-xs text-slate-200">
                       Thông báo ({notifications.filter(n => !n.read).length})
@@ -321,6 +312,15 @@ export default function MainLayout({ children }) {
                 </div>
               )}
             </div>
+
+            {/* Theme Toggle (Light/Dark) */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
+              title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+            >
+              {theme === 'dark' ? <Sun className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
+            </button>
           </div>
         </header>
 
