@@ -138,6 +138,57 @@ export default function MainLayout({ children }) {
               );
             })}
           </nav>
+
+          {/* Environment Status Rows (Desktop Sidebar) */}
+          <div className="px-4 py-3 mx-4 my-2 bg-slate-950/40 border border-slate-800 rounded-2xl space-y-2 text-xs">
+            <span className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              Trạng thái kết nối
+            </span>
+            
+            {/* WiFi Status Row */}
+            <div 
+              className={`flex items-center gap-2.5 cursor-pointer font-medium p-1.5 rounded-lg transition duration-150 ${
+                officeWifi 
+                  ? 'text-emerald-400 hover:bg-emerald-500/5' 
+                  : 'text-rose-455 hover:bg-rose-500/5'
+              }`}
+              onClick={() => showDialog({
+                title: 'Kết nối mạng văn phòng',
+                message: officeWifi 
+                  ? 'Địa chỉ IP mạng WiFi của bạn trùng khớp với dải địa chỉ IP văn phòng NEXUS HRM.' 
+                  : 'Cảnh báo: Bạn đang truy cập từ địa chỉ IP mạng ngoài phạm vi văn phòng.',
+                type: officeWifi ? 'success' : 'warning'
+              })}
+            >
+              <Wifi className={`w-4 h-4 shrink-0 ${officeWifi ? 'text-emerald-400' : 'text-rose-400'}`} />
+              <div className="truncate">
+                <span className="block font-bold leading-none">{officeWifi ? 'Office IP' : 'External IP'}</span>
+                <span className="text-[9px] text-slate-550 mt-1 block leading-none">{officeWifi ? 'Đúng mạng văn phòng' : 'Mạng ngoài văn phòng'}</span>
+              </div>
+            </div>
+
+            {/* GPS Status Row */}
+            <div 
+              className={`flex items-center gap-2.5 cursor-pointer font-medium p-1.5 rounded-lg transition duration-150 ${
+                gpsWithinRange 
+                  ? 'text-emerald-400 hover:bg-emerald-500/5' 
+                  : 'text-rose-455 hover:bg-rose-500/5'
+              }`}
+              onClick={() => showDialog({
+                title: 'Định vị GPS Geofence',
+                message: gpsWithinRange 
+                  ? 'Tọa độ GPS thiết bị nằm trong bán kính 100m xung quanh văn phòng công ty.' 
+                  : 'Cảnh báo: Tọa độ GPS thiết bị vượt quá 100m so với tâm định vị công ty.',
+                type: gpsWithinRange ? 'success' : 'warning'
+              })}
+            >
+              <MapPin className={`w-4 h-4 shrink-0 ${gpsWithinRange ? 'text-emerald-400' : 'text-rose-400'}`} />
+              <div className="truncate">
+                <span className="block font-bold leading-none">{gpsWithinRange ? 'Within Range' : 'Out of Geofence'}</span>
+                <span className="text-[9px] text-slate-550 mt-1 block leading-none">{gpsWithinRange ? 'Trong khoảng cách 100m' : 'Ngoài phạm vi 100m'}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Profile Card & Logout */}
@@ -193,49 +244,6 @@ export default function MainLayout({ children }) {
 
           {/* Right Header Controls */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            
-            {/* Environment Status Badges */}
-            <div className="flex items-center gap-1 sm:gap-2 bg-slate-950/80 border border-slate-800 rounded-full py-1 px-1.5 sm:py-1.5 sm:px-3">
-              {/* WiFi Status */}
-              <div 
-                className={`flex items-center gap-1 cursor-pointer text-[10px] sm:text-xs font-semibold py-0.5 px-1.5 sm:px-2 rounded-full ${
-                  officeWifi 
-                    ? 'text-emerald-400 bg-emerald-500/10' 
-                    : 'text-rose-400 bg-rose-500/10'
-                }`}
-                title={officeWifi ? 'IP Mạng văn phòng hợp lệ' : 'Sai IP mạng văn phòng'}
-                onClick={() => showDialog({
-                  title: 'Kết nối mạng văn phòng',
-                  message: officeWifi 
-                    ? 'Địa chỉ IP mạng WiFi của bạn trùng khớp với dải địa chỉ IP văn phòng NEXUS HRM.' 
-                    : 'Cảnh báo: Bạn đang truy cập từ địa chỉ IP mạng ngoài phạm vi văn phòng.',
-                  type: officeWifi ? 'success' : 'warning'
-                })}
-              >
-                <Wifi className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{officeWifi ? 'Office IP' : 'External IP'}</span>
-              </div>
-
-              {/* GPS Status */}
-              <div 
-                className={`flex items-center gap-1 cursor-pointer text-[10px] sm:text-xs font-semibold py-0.5 px-1.5 sm:px-2 rounded-full ${
-                  gpsWithinRange 
-                    ? 'text-emerald-400 bg-emerald-500/10' 
-                    : 'text-rose-400 bg-rose-500/10'
-                }`}
-                title={gpsWithinRange ? 'Tọa độ GPS trong khoảng cách 100m' : 'Ngoài phạm vi GPS công ty'}
-                onClick={() => showDialog({
-                  title: 'Định vị GPS Geofence',
-                  message: gpsWithinRange 
-                    ? 'Tọa độ GPS thiết bị nằm trong bán kính 100m xung quanh văn phòng công ty.' 
-                    : 'Cảnh báo: Tọa độ GPS thiết bị vượt quá 100m so với tâm định vị công ty.',
-                  type: gpsWithinRange ? 'success' : 'warning'
-                })}
-              >
-                <MapPin className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{gpsWithinRange ? 'Within Range' : 'Out of Geofence'}</span>
-              </div>
-            </div>
 
             {/* Theme Toggle (Light/Dark) */}
             <button
@@ -377,6 +385,63 @@ export default function MainLayout({ children }) {
                   );
                 })}
               </nav>
+
+              {/* Environment Status Rows (Mobile Sidebar) */}
+              <div className="px-4 py-3 mx-4 my-2 bg-slate-950/40 border border-slate-800 rounded-2xl space-y-2 text-xs">
+                <span className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Trạng thái kết nối
+                </span>
+                
+                {/* WiFi Status Row */}
+                <div 
+                  className={`flex items-center gap-2.5 cursor-pointer font-medium p-1.5 rounded-lg transition duration-150 ${
+                    officeWifi 
+                      ? 'text-emerald-400 hover:bg-emerald-500/5' 
+                      : 'text-rose-405 hover:bg-rose-500/5'
+                  }`}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    showDialog({
+                      title: 'Kết nối mạng văn phòng',
+                      message: officeWifi 
+                        ? 'Địa chỉ IP mạng WiFi của bạn trùng khớp với dải địa chỉ IP văn phòng NEXUS HRM.' 
+                        : 'Cảnh báo: Bạn đang truy cập từ địa chỉ IP mạng ngoài phạm vi văn phòng.',
+                      type: officeWifi ? 'success' : 'warning'
+                    });
+                  }}
+                >
+                  <Wifi className={`w-4 h-4 shrink-0 ${officeWifi ? 'text-emerald-400' : 'text-rose-400'}`} />
+                  <div className="truncate">
+                    <span className="block font-bold leading-none">{officeWifi ? 'Office IP' : 'External IP'}</span>
+                    <span className="text-[9px] text-slate-550 mt-1 block leading-none">{officeWifi ? 'Đúng mạng văn phòng' : 'Mạng ngoài văn phòng'}</span>
+                  </div>
+                </div>
+
+                {/* GPS Status Row */}
+                <div 
+                  className={`flex items-center gap-2.5 cursor-pointer font-medium p-1.5 rounded-lg transition duration-150 ${
+                    gpsWithinRange 
+                      ? 'text-emerald-400 hover:bg-emerald-500/5' 
+                      : 'text-rose-405 hover:bg-rose-500/5'
+                  }`}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    showDialog({
+                      title: 'Định vị GPS Geofence',
+                      message: gpsWithinRange 
+                        ? 'Tọa độ GPS thiết bị nằm trong bán kính 100m xung quanh văn phòng công ty.' 
+                        : 'Cảnh báo: Tọa độ GPS thiết bị vượt quá 100m so với tâm định vị công ty.',
+                      type: gpsWithinRange ? 'success' : 'warning'
+                    });
+                  }}
+                >
+                  <MapPin className={`w-4 h-4 shrink-0 ${gpsWithinRange ? 'text-emerald-400' : 'text-rose-400'}`} />
+                  <div className="truncate">
+                    <span className="block font-bold leading-none">{gpsWithinRange ? 'Within Range' : 'Out of Geofence'}</span>
+                    <span className="text-[9px] text-slate-550 mt-1 block leading-none">{gpsWithinRange ? 'Trong khoảng cách 100m' : 'Ngoài phạm vi 100m'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Profile Card & Logout */}
