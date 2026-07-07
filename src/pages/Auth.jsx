@@ -9,7 +9,7 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
   // Login Form States
-  const [loginEmail, setLoginEmail] = useState('admin@genxpks.com');
+  const [loginEmail, setLoginEmail] = useState('admin@nexushrm.com');
   const [loginPass, setLoginPass] = useState('password123');
   
   // Register Form States
@@ -176,7 +176,7 @@ export default function Auth() {
             <ShieldCheck className="w-9 h-9 text-slate-950 stroke-[2]" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-teal-300 via-teal-400 to-emerald-400 bg-clip-text text-transparent">
-            GENX PKS
+            NEXUS HRM
           </h1>
           <p className="text-slate-400 text-sm mt-1">Hệ thống Quản lý Nhân sự & Chấm công</p>
         </div>
@@ -243,7 +243,7 @@ export default function Auth() {
                 <input
                   type="email"
                   required
-                  placeholder="nva@genxpks.com"
+                  placeholder="nva@nexushrm.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30 transition text-slate-200"
@@ -308,7 +308,7 @@ export default function Auth() {
                 <input
                   type="email"
                   required
-                  placeholder="nva@genxpks.com"
+                  placeholder="nva@nexushrm.com"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30 transition text-slate-200"
@@ -367,7 +367,7 @@ export default function Auth() {
                     <input
                       type="email"
                       required
-                      placeholder="nva@genxpks.com"
+                      placeholder="nva@nexushrm.com"
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30 transition text-slate-200"

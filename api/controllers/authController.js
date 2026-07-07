@@ -24,7 +24,7 @@ const sendEmailNotification = async (to, subject, textContent) => {
     });
 
     await transporter.sendMail({
-      from: '"GENX PKS HRM" <no-reply@genxpks.com>',
+      from: '"NEXUS HRM" <no-reply@nexushrm.com>',
       to,
       subject,
       text: textContent
@@ -119,8 +119,8 @@ export const register = async (req, res) => {
     await logSystem(`Đăng ký tài khoản mới thành công cho nhân viên: ${fullName} (Mã: ${newEmployeeId})`, 'success');
 
     // Send activation email
-    const emailBody = `Chào mừng ${fullName},\n\nTài khoản quản lý nhân sự GENX PKS của bạn đã được khởi tạo thành công.\nMã nhân viên của bạn là: ${newEmployeeId}.\nVui lòng truy cập hệ thống để kích hoạt và hoàn tất hồ sơ cá nhân.\n\nTrân trọng,\nBộ phận nhân sự GENX PKS.`;
-    await sendEmailNotification(email, 'Khởi tạo tài khoản nhân sự GENX PKS thành công', emailBody);
+    const emailBody = `Chào mừng ${fullName},\n\nTài khoản quản lý nhân sự NEXUS HRM của bạn đã được khởi tạo thành công.\nMã nhân viên của bạn là: ${newEmployeeId}.\nVui lòng truy cập hệ thống để kích hoạt và hoàn tất hồ sơ cá nhân.\n\nTrân trọng,\nBộ phận nhân sự NEXUS HRM.`;
+    await sendEmailNotification(email, 'Khởi tạo tài khoản nhân sự NEXUS HRM thành công', emailBody);
 
     res.status(201).json({
       message: 'Đăng ký tài khoản thành công! Mã kích hoạt đã được gửi về email.',
@@ -293,8 +293,8 @@ export const forgotPassword = async (req, res) => {
     await logSystem(`Yêu cầu đặt lại mật khẩu cho email: ${email}. Đã gửi mã OTP.`, 'info');
 
     // Send email with OTP code
-    const emailBody = `Chào ${user.full_name},\n\nMã OTP khôi phục mật khẩu tài khoản GENX PKS của bạn là: ${otp}.\nMã này có hiệu lực trong vòng 5 phút.\n\nTrân trọng,\nHệ thống bảo mật GENX PKS.`;
-    await sendEmailNotification(email, 'Mã OTP khôi phục mật khẩu tài khoản GENX PKS', emailBody);
+    const emailBody = `Chào ${user.full_name},\n\nMã OTP khôi phục mật khẩu tài khoản NEXUS HRM của bạn là: ${otp}.\nMã này có hiệu lực trong vòng 5 phút.\n\nTrân trọng,\nHệ thống bảo mật NEXUS HRM.`;
+    await sendEmailNotification(email, 'Mã OTP khôi phục mật khẩu tài khoản NEXUS HRM', emailBody);
 
     res.json({
       message: 'Mã OTP khôi phục mật khẩu đã được gửi thành công!',

@@ -387,7 +387,7 @@ export const exportPayrollData = async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename=GENX_PKS_Payroll.csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=NEXUS_HRM_Payroll.csv');
     res.send(csvContent);
 
   } catch (error) {

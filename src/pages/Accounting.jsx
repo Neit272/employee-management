@@ -545,7 +545,7 @@ export default function Accounting() {
             <div>
               <h3 className="text-lg font-bold text-slate-200">Thư mục Hợp đồng Core (Đang khóa)</h3>
               <p className="text-slate-400 text-xs mt-2 leading-relaxed max-w-xl mx-auto">
-                Khu vực lưu trữ hồ sơ tuyệt mật gồm Hợp đồng lao động cốt cán và các thỏa thuận kinh tế thương mại đặc biệt của GENX. 
+                Khu vực lưu trữ hồ sơ tuyệt mật gồm Hợp đồng lao động cốt cán và các thỏa thuận kinh tế thương mại đặc biệt của NEXUS. 
                 Yêu cầu xác thực 2 yếu tố nghiêm ngặt (Mật khẩu và OTP Email) để truy cập.
               </p>
             </div>

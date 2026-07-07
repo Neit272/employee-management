@@ -779,7 +779,7 @@ export default function Admin() {
           </head>
           <body>
             <h2>BẢNG TỔNG HỢP CÔNG CHI TIẾT</h2>
-            <div class="subtitle">Tháng ${matrixMonth}/${matrixYear} — Công ty GENX PKS</div>
+            <div class="subtitle">Tháng ${matrixMonth}/${matrixYear} — Công ty NEXUS HRM</div>
             ${tableEl.outerHTML}
             <div class="legend">
               <div class="legend-title">Chú thích ký hiệu chấm công:</div>
@@ -1468,7 +1468,7 @@ export default function Admin() {
       <div className="bg-slate-900/30 border border-slate-855 rounded-3xl p-6 shadow-xl space-y-4">
         <div>
           <h3 className="font-bold text-slate-200">Cấu hình bảo vệ tài khoản Admin</h3>
-          <p className="text-slate-400 text-xs mt-1">Hệ thống an toànGENX PKS chặn không cho tài khoản Admin đang đăng nhập tự thay đổi hạ cấp quyền của bản thân.</p>
+          <p className="text-slate-400 text-xs mt-1">Hệ thống an toàn NEXUS HRM chặn không cho tài khoản Admin đang đăng nhập tự thay đổi hạ cấp quyền của bản thân.</p>
         </div>
 
         <div className="bg-slate-950 p-4 rounded-2xl border border-slate-850 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1738,7 +1738,7 @@ export default function Admin() {
                 <input
                   type="email"
                   required
-                  placeholder="nvx@genxpks.com"
+                  placeholder="nvx@nexushrm.com"
                   value={accountForm.email}
                   onChange={(e) => setAccountForm(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500"

@@ -82,7 +82,7 @@ export default function MandatoryUpdateModal() {
           <div>
             <h2 className="text-xl font-bold text-slate-100">Bắt buộc cập nhật thông tin</h2>
             <p className="text-slate-400 text-xs mt-1 leading-relaxed">
-              Theo quy định nội bộ GENX PKS, tài khoản mới khởi tạo phải hoàn thiện thông tin hồ sơ trước khi truy cập bất kỳ tính năng nào khác của hệ thống.
+              Theo quy định nội bộ NEXUS HRM, tài khoản mới khởi tạo phải hoàn thiện thông tin hồ sơ trước khi truy cập bất kỳ tính năng nào khác của hệ thống.
             </p>
           </div>
         </div>

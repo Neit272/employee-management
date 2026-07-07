@@ -99,10 +99,10 @@ export default function MainLayout({ children }) {
             <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800/80 bg-slate-950/20">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-                  <span className="text-slate-950 font-black text-lg tracking-tighter">G</span>
+                  <span className="text-slate-950 font-black text-lg tracking-tighter">N</span>
                 </div>
                 <div>
-                  <span className="font-extrabold text-slate-200 tracking-tight text-base">GENX PKS</span>
+                  <span className="font-extrabold text-slate-200 tracking-tight text-base">NEXUS HRM</span>
                   <span className="block text-[9px] text-slate-500 font-semibold tracking-widest uppercase">HRM & Attendance</span>
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function MainLayout({ children }) {
                 onClick={() => showDialog({
                   title: 'Kết nối mạng văn phòng',
                   message: officeWifi 
-                    ? 'Địa chỉ IP mạng WiFi của bạn trùng khớp với dải địa chỉ IP văn phòng GENX PKS.' 
+                    ? 'Địa chỉ IP mạng WiFi của bạn trùng khớp với dải địa chỉ IP văn phòng NEXUS HRM.' 
                     : 'Cảnh báo: Bạn đang truy cập từ địa chỉ IP mạng ngoài phạm vi văn phòng.',
                   type: officeWifi ? 'success' : 'warning'
                 })}
@@ -338,10 +338,10 @@ export default function MainLayout({ children }) {
               <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950/20">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-                    <span className="text-slate-950 font-black text-lg tracking-tighter">G</span>
+                    <span className="text-slate-950 font-black text-lg tracking-tighter">N</span>
                   </div>
                   <div>
-                    <span className="font-extrabold text-slate-200 tracking-tight text-base">GENX PKS</span>
+                    <span className="font-extrabold text-slate-200 tracking-tight text-base">NEXUS HRM</span>
                     <span className="block text-[9px] text-slate-500 font-semibold tracking-widest uppercase">HRM & Attendance</span>
                   </div>
                 </div>

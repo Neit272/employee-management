@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 const AppContext = createContext();
 
 // Initialize HTML5 Broadcast Channel for cross-tab multiplayer sync
-const syncChannel = new BroadcastChannel('genx_pks_hrm_sync');
+const syncChannel = new BroadcastChannel('nexus_hrm_sync');
 
 const initialDepartments = ['Hành chính', 'Nhân sự', 'Kế toán', 'Kỹ thuật', 'Kinh doanh'];
 const initialPositions = ['Trưởng phòng', 'Nhân viên chính thức', 'Nhân viên thử việc', 'Kế toán viên', 'Chuyên viên HR'];
@@ -15,12 +15,12 @@ const initialDocuments = [];
 const presetUsers = {
   Admin: {
     fullName: 'Phạm Văn D (System Admin)',
-    email: 'admin@genxpks.com',
+    email: 'admin@nexushrm.com',
     role: 'Admin',
     employeeId: 'NV000',
     cccd: '012345678911',
     phone: '0999999999',
-    address: 'Trụ sở chính GENX PKS',
+    address: 'Trụ sở chính NEXUS HRM',
     startDate: '2024-01-01',
     department: 'Hành chính',
     position: 'Trưởng phòng',
@@ -34,20 +34,20 @@ const presetUsers = {
 export const AppProvider = ({ children }) => {
   // Current user state (Initialize from localStorage to persist login state)
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('genx_user');
+    const saved = localStorage.getItem('nexus_user');
     return saved ? JSON.parse(saved) : null;
   });
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return !!localStorage.getItem('genx_user');
+    return !!localStorage.getItem('nexus_user');
   });
 
   // Persist login state changes to localStorage
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('genx_user', JSON.stringify(currentUser));
+      localStorage.setItem('nexus_user', JSON.stringify(currentUser));
       setIsLoggedIn(true);
     } else {
-      localStorage.removeItem('genx_user');
+      localStorage.removeItem('nexus_user');
       setIsLoggedIn(false);
     }
   }, [currentUser]);
@@ -137,7 +137,7 @@ export const AppProvider = ({ children }) => {
 
   // Real-time Notifications state
   const [notifications, rawSetNotifications] = useState([
-    { id: 1, title: 'Thông báo hệ thống', description: 'Chào mừng bạn đến với hệ thống HRM GENX PKS.', time: '09:00', read: false, type: 'info' },
+    { id: 1, title: 'Thông báo hệ thống', description: 'Chào mừng bạn đến với hệ thống HRM NEXUS HRM.', time: '09:00', read: false, type: 'info' },
     { id: 2, title: 'Chấm công tự động', description: 'Đã hoàn thành đề xuất ca làm việc tự động sáng nay.', time: '07:45', read: true, type: 'success' },
   ]);
 
@@ -192,7 +192,7 @@ export const AppProvider = ({ children }) => {
   const getApiUrl = (endpoint) => {
     const base = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       ? 'http://localhost:5000/api'
-      : 'https://genx-em.vercel.app/api';
+      : 'https://employee-management-prj.vercel.app/api';
     return `${base}${endpoint}`;
   };
 
@@ -403,7 +403,7 @@ export const AppProvider = ({ children }) => {
   // Logout current user and clear states (Reverted & optimized with deferred state cleanup)
   const logout = () => {
     setIsLoggedIn(false);
-    localStorage.removeItem('genx_user');
+    localStorage.removeItem('nexus_user');
     setIsCheckedIn(false);
     setCheckInTime(null);
     setCurrentPath('/dashboard');

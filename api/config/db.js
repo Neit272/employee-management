@@ -152,9 +152,9 @@ const initDDL = async () => {
 
     // Seed Users if empty
     // First, let's delete any obsolete demo users from the DB if they exist
-    await client.query("DELETE FROM users WHERE email IN ('nva@genxpks.com', 'ttb@genxpks.com', 'lvc@genxpks.com', 'hve@genxpks.com', 'hte@genxpks.com')").catch(() => {});
+    await client.query("DELETE FROM users WHERE email IN ('nva@genxpks.com', 'ttb@genxpks.com', 'lvc@genxpks.com', 'hve@genxpks.com', 'hte@genxpks.com', 'admin@genxpks.com')").catch(() => {});
 
-    const userCheck = await client.query("SELECT COUNT(*) FROM users WHERE email = 'admin@genxpks.com'");
+    const userCheck = await client.query("SELECT COUNT(*) FROM users WHERE email = 'admin@nexushrm.com'");
     if (parseInt(userCheck.rows[0].count, 10) === 0) {
       await client.query(`
         INSERT INTO users (
@@ -163,12 +163,12 @@ const initDDL = async () => {
       `, [
         'NV000',
         'Phạm Văn D (System Admin)',
-        'admin@genxpks.com',
+        'admin@nexushrm.com',
         'password123',
         'Admin',
         '012345678911',
         '0999999999',
-        'Trụ sở chính GENX PKS',
+        'Trụ sở chính NEXUS HRM',
         '2024-01-01',
         'Hành chính',
         'Trưởng phòng',

@@ -26,7 +26,7 @@ const sendEmail = async (to, subject, text) => {
     });
 
     await transporter.sendMail({
-      from: '"GENX PKS HRM" <no-reply@genxpks.com>',
+      from: '"NEXUS HRM" <no-reply@nexushrm.com>',
       to,
       subject,
       text
@@ -118,7 +118,7 @@ export const requestDocumentAccess = async (req, res) => {
     `, [otp, expiresAt, matchedUser.employeeId]);
 
     // Send email with OTP code
-    const emailBody = `Chào ${matchedUser.fullName},\n\nMã OTP xác thực 2 lớp tải tài liệu của bạn là: ${otp}.\nMã này có hiệu lực trong vòng 5 phút.\nVui lòng không chia sẻ mã này cho bất kỳ ai.\n\nTrân trọng,\nHệ thống bảo mật GENX PKS.`;
+    const emailBody = `Chào ${matchedUser.fullName},\n\nMã OTP xác thực 2 lớp tải tài liệu của bạn là: ${otp}.\nMã này có hiệu lực trong vòng 5 phút.\nVui lòng không chia sẻ mã này cho bất kỳ ai.\n\nTrân trọng,\nHệ thống bảo mật NEXUS HRM.`;
     await sendEmail(matchedUser.email, 'Mã OTP xác thực tải tài liệu bảo mật CORE', emailBody);
 
     res.json({
