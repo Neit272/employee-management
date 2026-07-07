@@ -290,7 +290,7 @@ export const manualAttendanceOverride = async (req, res) => {
     `, [
       employeeId,
       date,
-      shift || 'Ca hành chính (08:00 - 17:30)',
+      shift || 'Ca Gãy (09:00 - 18:00)',
       clockIn || '-',
       clockOut || '-',
       actualHours !== undefined ? parseFloat(actualHours) : 0,

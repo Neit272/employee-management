@@ -76,6 +76,12 @@ export default function Admin() {
     }
   };
 
+  useEffect(() => {
+    if (currentUser) {
+      fetchMatrixGrid();
+    }
+  }, [matrixMonth, matrixYear, currentUser]);
+
   // User Account Management States
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null); // if null, we are adding new account
@@ -573,39 +579,44 @@ export default function Admin() {
   };
 
   // 4. Matrix Timesheet grid calculations
-  const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
+  const daysCount = matrixData ? matrixData.daysInMonth : new Date(parseInt(matrixYear, 10), parseInt(matrixMonth, 10), 0).getDate();
+  const daysInMonth = Array.from({ length: daysCount }, (_, i) => i + 1);
   
-  // Simulated matrix grid mapping for users
-  const mockTimesheetGrid = allUsers.map(user => {
-    const row = { employeeId: user.employeeId, fullName: user.fullName };
+  // Real timesheet matrix grid calculations from database
+  const timesheetGrid = (matrixData?.matrix || []).map(row => {
     let worked = 0;
     let paidLeave = 0;
     let unpaidLeave = 0;
     
-    daysInMonth.forEach(d => {
-      // Simulate random statuses for grid
-      let val = 'X'; // Default worked
-      if (d % 10 === 0) {
-        val = 'P'; // paid leave
-        paidLeave++;
-      } else if (d % 15 === 0) {
-        val = 'Ro'; // unpaid leave
-        unpaidLeave++;
-      } else {
-        worked++;
-      }
-      row[`day_${d}`] = val;
-    });
-    
-    row.worked = worked;
-    row.paidLeave = paidLeave;
-    row.unpaidLeave = unpaidLeave;
-    return row;
+    if (row.days) {
+      Object.values(row.days).forEach(d => {
+        if (d.symbol === 'X') worked++;
+        else if (d.symbol === 'P') paidLeave++;
+        else if (d.symbol === 'Ro') unpaidLeave++;
+      });
+    }
+
+    const dayFields = {};
+    if (row.days) {
+      Object.keys(row.days).forEach(d => {
+        dayFields[`day_${d}`] = row.days[d].symbol;
+      });
+    }
+
+    return {
+      employeeId: row.employeeId,
+      fullName: row.fullName,
+      department: row.department,
+      worked,
+      paidLeave,
+      unpaidLeave,
+      ...dayFields
+    };
   });
 
   // Filtered rows for empty state checks
-  const filteredTimesheet = mockTimesheetGrid.filter(row => {
-    const q = timesheetSearch.toLowerCase();
+  const filteredTimesheet = timesheetGrid.filter(row => {
+    const q = timesheetSearch.toLowerCase().trim();
     return (
       row.fullName.toLowerCase().includes(q) ||
       row.employeeId.toLowerCase().includes(q)
@@ -654,7 +665,7 @@ export default function Admin() {
         `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll?month=${matrixMonth}&year=${matrixYear}`,
         {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+          headers: { 'Authorization': `Bearer ${currentUser?.employeeId || ''}` }
         }
       );
       if (!res.ok) {
@@ -1102,55 +1113,76 @@ export default function Admin() {
 
       {/* 3. Timesheet Matrix Grid */}
       <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">
-        <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div>
             <h3 className="font-bold text-slate-200">Bảng Công Tổng Hợp Tháng</h3>
-            <p className="text-slate-500 text-xs mt-0.5">Ký hiệu mã hoá: X (Đi làm), P (Nghỉ phép hưởng lương), Ro (Nghỉ không lương)</p>
+            <p className="text-slate-500 text-xs mt-0.5">Ký hiệu mã hoá: X (Đi làm), P (Nghỉ phép hưởng lương), Ro (Nghỉ không lương), – (Không có ca)</p>
           </div>
           
-            <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Month selector */}
+            <select
+              value={matrixMonth}
+              onChange={(e) => setMatrixMonth(e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+            >
+              {Array.from({ length: 12 }, (_, i) => {
+                const m = String(i + 1).padStart(2, '0');
+                return <option key={m} value={m}>Tháng {i + 1}</option>;
+              })}
+            </select>
+            
+            {/* Year selector */}
+            <input
+              type="number"
+              value={matrixYear}
+              onChange={(e) => setMatrixYear(e.target.value)}
+              min="2020"
+              max="2030"
+              placeholder="Năm"
+              className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500 w-16 text-center"
+            />
+
             <input
               type="text"
               placeholder="Tìm kiếm nhân viên..."
               value={timesheetSearch}
               onChange={(e) => setTimesheetSearch(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500 w-44"
+              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500 w-40"
             />
-            {/* Matrix Grid API Load Button */}
-            {currentUser.role === 'Admin' && (
-              <button
-                onClick={fetchMatrixGrid}
-                disabled={matrixLoading}
-                className="bg-slate-800 hover:bg-teal-500/20 hover:text-teal-400 text-slate-300 border border-slate-700 hover:border-teal-500/30 disabled:opacity-50 font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
-                title="Tải bảng tổng hợp chấm công từ server"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                {matrixLoading ? 'Đang tải...' : 'Tải từ DB'}
-              </button>
-            )}
             {/* Export excel validator constraints */}
             {currentUser.role === 'Admin' && (
-              <div className="flex gap-2.5">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={handleExport}
-                  className="bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+                  className="bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 transition"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-3.5 h-3.5" />
                   Xuất CSV
                 </button>
                 <button
                   type="button"
                   onClick={handleExportPDF}
-                  className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+                  className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 transition"
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-3.5 h-3.5" />
                   Xuất PDF
                 </button>
               </div>
             )}
           </div>
         </div>
+        {matrixLoading && (
+          <div className="bg-slate-950/40 text-center py-2 text-xs text-teal-400 font-medium border-b border-slate-855">
+            Đang tải dữ liệu chấm công từ database...
+          </div>
+        )}
+        {matrixError && (
+          <div className="bg-rose-500/10 text-center py-2 text-xs text-rose-400 border-b border-slate-855">
+            {matrixError}
+          </div>
+        )}
 
         <div className="overflow-auto max-w-full min-h-[320px] max-h-[500px]">
           <table id="attendance-matrix-table" className="w-full text-left text-xs border-collapse">
@@ -1203,90 +1235,7 @@ export default function Admin() {
           </table>
         </div>
       </div>
-      {/* Matrix Grid Panel — loaded from backend API */}
-      {(showMatrixGrid || matrixLoading || matrixError) && (
-        <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">
-          <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-950/20 flex items-center justify-between gap-3">
-            <div>
-              <h3 className="font-bold text-slate-200 flex items-center gap-2">
-                <Settings className="w-4 h-4 text-teal-400" />
-                Bảng Tổng Hợp Chấm Công (DB)
-              </h3>
-              <p className="text-slate-500 text-xs mt-0.5">
-                Dữ liệu trực tiếp từ cơ sở dữ liệu. X = Đi làm, P = Nghỉ phép, Ro = Vắng mặt, – = Không ghi nhận.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <select value={matrixMonth} onChange={(e) => setMatrixMonth(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500">
-                {Array.from({ length: 12 }, (_, i) => {
-                  const m = String(i + 1).padStart(2, '0');
-                  return <option key={m} value={m}>Tháng {i + 1}</option>;
-                })}
-              </select>
-              <input type="number" value={matrixYear} onChange={(e) => setMatrixYear(e.target.value)}
-                min="2020" max="2030" placeholder="Năm"
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500 w-20" />
-              <button onClick={fetchMatrixGrid} disabled={matrixLoading}
-                className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold rounded-lg text-xs transition disabled:opacity-50">
-                {matrixLoading ? 'Đang tải...' : 'Tải lại'}
-              </button>
-              <button onClick={() => { setShowMatrixGrid(false); setMatrixData(null); setMatrixError(''); }}
-                className="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg text-xs transition">✕</button>
-            </div>
-          </div>
-          {matrixError && (
-            <div className="px-6 py-4 text-rose-400 text-xs">{matrixError}</div>
-          )}
-          {matrixLoading && (
-            <div className="px-6 py-8 text-center text-slate-500 text-xs">Đang tải dữ liệu từ database...</div>
-          )}
-          {matrixData && !matrixLoading && (
-            <div className="overflow-auto max-w-full max-h-[500px]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 z-30">
-                  <tr className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-850">
-                    <th className="px-4 py-3 min-w-[150px] sticky left-0 top-0 bg-slate-950 border-r border-slate-800 z-40">Nhân viên</th>
-                    {Array.from({ length: matrixData.daysInMonth }, (_, i) => (
-                      <th key={i + 1} className="px-2 py-3 text-center min-w-[32px] bg-slate-950 sticky top-0 z-10">{i + 1}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850/60">
-                  {matrixData.matrix.length === 0 ? (
-                    <tr><td colSpan="35" className="px-6 py-8 text-center text-slate-500 italic">Không có dữ liệu chấm công trong tháng này.</td></tr>
-                  ) : (
-                    matrixData.matrix.map((row) => (
-                      <tr key={row.employeeId} className="hover:bg-slate-900/10">
-                        <td className="px-4 py-2.5 font-medium text-slate-250 sticky left-0 bg-slate-900 border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.2)]">
-                          {row.fullName}
-                          <span className="block text-[10px] text-slate-500">{row.employeeId} · {row.department || '—'}</span>
-                        </td>
-                        {Array.from({ length: matrixData.daysInMonth }, (_, i) => {
-                          const day = i + 1;
-                          const cell = row.days[day] || { symbol: '–', hours: 0 };
-                          return (
-                            <td key={day} className="px-1 py-2.5 text-center">
-                              <span title={`${cell.hours}h`} className={`inline-flex items-center justify-center w-6 h-5 rounded text-[9px] font-bold ${
-                                cell.symbol === 'X' ? 'bg-emerald-500/15 text-emerald-400' :
-                                cell.symbol === 'P' ? 'bg-blue-500/15 text-blue-400' :
-                                cell.symbol === 'Ro' ? 'bg-rose-500/15 text-rose-400' :
-                                'text-slate-700'
-                              }`}>
-                                {cell.symbol}
-                              </span>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+
 
       {/* Manual Attendance Editor Section */}
       <div className="bg-slate-900/30 border border-slate-855 rounded-3xl overflow-hidden shadow-xl">

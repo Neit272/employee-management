@@ -174,7 +174,7 @@ export default function Accounting() {
         `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : ''}/api/admin/export-payroll?month=${summaryMonth}&year=${summaryYear}`,
         {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+          headers: { 'Authorization': `Bearer ${currentUser?.employeeId || ''}` }
         }
       );
       if (!res.ok) {

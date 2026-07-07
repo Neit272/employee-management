@@ -99,13 +99,13 @@ export const checkIn = async (req, res) => {
     const checkInHour = checkInTime.getHours() + checkInTime.getMinutes() / 60;
     const graceHours = 10 / 60; // 10 minutes grace period
     
-    if (shiftName.includes('Sáng') && checkInHour > (8.0 + graceHours)) {
+    if (shiftName.includes('Sáng') && checkInHour > (9.0 + graceHours)) {
       attendanceStatus = 'Đi muộn';
-    } else if (shiftName.includes('Chiều') && checkInHour > (13.5 + graceHours)) {
+    } else if (shiftName.includes('Chiều') && checkInHour > (14.0 + graceHours)) {
       attendanceStatus = 'Đi muộn';
-    } else if ((shiftName.includes('gãy') || shiftName.includes('hành chính') || shiftName.includes('Online')) && checkInHour > (8.0 + graceHours)) {
+    } else if ((shiftName.includes('gãy') || shiftName.includes('hành chính') || shiftName.includes('Online')) && checkInHour > (9.0 + graceHours)) {
       attendanceStatus = 'Đi muộn';
-    } else if (shiftName.includes('Tăng ca') && checkInHour > (18.0 + graceHours)) {
+    } else if (shiftName.includes('Tăng ca') && checkInHour > (18.5 + graceHours)) {
       attendanceStatus = 'Đi muộn';
     }
 
@@ -170,11 +170,11 @@ export const checkOut = async (req, res) => {
     let finalStatus = record.status;
     if (finalStatus === 'Hợp lệ') {
       const checkoutHour = checkOutTime.getHours() + checkOutTime.getMinutes() / 60;
-      if (record.shift.includes('Sáng') && checkoutHour < 12.0) {
+      if (record.shift.includes('Sáng') && checkoutHour < 13.0) {
         finalStatus = 'Về sớm';
-      } else if (record.shift.includes('Chiều') && checkoutHour < 17.5) {
+      } else if (record.shift.includes('Chiều') && checkoutHour < 18.0) {
         finalStatus = 'Về sớm';
-      } else if (record.shift.includes('gãy') || record.shift.includes('hành chính') && checkoutHour < 17.5) {
+      } else if ((record.shift.includes('gãy') || record.shift.includes('hành chính') || record.shift.includes('Online')) && checkoutHour < 18.0) {
         finalStatus = 'Về sớm';
       }
     }

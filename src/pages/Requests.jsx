@@ -31,7 +31,7 @@ export default function Requests() {
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
   const [file, setFile] = useState(null);
-  const [correctedTime, setCorrectedTime] = useState('08:00');
+  const [correctedTime, setCorrectedTime] = useState('09:00');
   
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -142,7 +142,8 @@ export default function Requests() {
         toDate,
         reason,
         attachmentBase64: fileBase64,
-        attachmentMeta: fileMeta
+        attachmentMeta: fileMeta,
+        correctedTime: requestType.includes('Giải trình') ? correctedTime : null
       });
 
       setSubmitting(false);

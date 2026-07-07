@@ -24,7 +24,7 @@ const mapRequestToCamel = (row) => {
 
 export const submitRequest = async (req, res) => {
   try {
-    const { type, fromDate, toDate, reason, attachmentBase64, attachmentMeta } = req.body;
+    const { type, fromDate, toDate, reason, attachmentBase64, attachmentMeta, correctedTime } = req.body;
     const employeeId = req.user.employeeId;
     const fullName = req.user.fullName;
 
@@ -59,10 +59,10 @@ export const submitRequest = async (req, res) => {
     }
 
     const result = await query(`
-      INSERT INTO requests (type, from_date, to_date, reason, attachment_name, attachment_size, attachment_path, status, employee_name, employee_id, submit_date)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      INSERT INTO requests (type, from_date, to_date, reason, attachment_name, attachment_size, attachment_path, status, employee_name, employee_id, submit_date, corrected_time)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
-    `, [type, fromDate, toDate, reason, attachmentName, attachmentSize, attachmentPath, 'Pending', fullName, employeeId, todayStr]);
+    `, [type, fromDate, toDate, reason, attachmentName, attachmentSize, attachmentPath, 'Pending', fullName, employeeId, todayStr, correctedTime || null]);
 
     if (type.includes('quên check-in') || type.includes('bù')) {
       const timeStr = new Date().toLocaleTimeString('vi-VN');
@@ -132,26 +132,89 @@ export const handleApproveReject = async (req, res) => {
 
     // Auto-update attendance records on approval
     if (status === 'Approved') {
-      if (reqObj.type.includes('quên check-in') || reqObj.type.includes('bù')) {
-        await query(`
-          INSERT INTO attendance (employee_id, date, shift, clock_in, clock_out, actual_hours, status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-          ON CONFLICT (employee_id, date)
-          DO UPDATE SET 
-            shift = EXCLUDED.shift, 
-            clock_in = EXCLUDED.clock_in, 
-            clock_out = EXCLUDED.clock_out, 
-            actual_hours = EXCLUDED.actual_hours, 
-            status = EXCLUDED.status
-        `, [
-          reqObj.employee_id,
-          reqObj.from_date,
-          'Ca hành chính (08:00 - 17:30)',
-          '08:00:00',
-          '17:30:00',
-          8.5,
-          'Hợp lệ'
-        ]);
+      if (reqObj.type.includes('check-in') || reqObj.type.includes('check-out') || reqObj.type.includes('bù')) {
+        const isCheckOut = reqObj.type.includes('check-out');
+        const defaultShift = 'Ca Gãy (09:00 - 18:00)';
+        
+        // Format corrected time as HH:MM:00
+        let corrTime = reqObj.corrected_time || (isCheckOut ? '18:00:00' : '09:00:00');
+        if (corrTime && corrTime.split(':').length === 2) {
+          corrTime = corrTime + ':00';
+        }
+
+        const existingAttendance = await query('SELECT * FROM attendance WHERE employee_id = $1 AND date = $2', [reqObj.employee_id, reqObj.from_date]);
+        
+        const getHoursDiff = (time1, time2) => {
+          if (!time1 || time1 === '-' || !time2 || time2 === '-') return 0;
+          const [h1, m1] = time1.split(':').map(Number);
+          const [h2, m2] = time2.split(':').map(Number);
+          const diffMins = (h2 * 60 + m2) - (h1 * 60 + m1);
+          return Math.max(0, Math.round((diffMins / 60) * 10) / 10);
+        };
+
+        const getCheckInStatus = (shift, clockIn) => {
+          if (!clockIn || clockIn === '-') return 'Hợp lệ';
+          const [inH, inM] = clockIn.split(':').map(Number);
+          const inVal = inH + inM / 60;
+          const grace = 10 / 60;
+          if (shift.includes('Sáng') && inVal > (9.0 + grace)) return 'Đi muộn';
+          if (shift.includes('Chiều') && inVal > (14.0 + grace)) return 'Đi muộn';
+          if (shift.includes('Tăng ca') && inVal > (18.5 + grace)) return 'Đi muộn';
+          if (inVal > (9.0 + grace)) return 'Đi muộn';
+          return 'Hợp lệ';
+        };
+
+        const getCheckOutStatus = (shift, clockOut) => {
+          if (!clockOut || clockOut === '-') return 'Hợp lệ';
+          const [outH, outM] = clockOut.split(':').map(Number);
+          const outVal = outH + outM / 60;
+          if (shift.includes('Sáng') && outVal < 13.0) return 'Về sớm';
+          if (shift.includes('Chiều') && outVal < 18.0) return 'Về sớm';
+          if (outVal < 18.0) return 'Về sớm';
+          return 'Hợp lệ';
+        };
+
+        if (existingAttendance.rows.length > 0) {
+          const att = existingAttendance.rows[0];
+          let clockIn = att.clock_in;
+          let clockOut = att.clock_out;
+          
+          if (isCheckOut) {
+            clockOut = corrTime;
+          } else {
+            clockIn = corrTime;
+          }
+          
+          const actualHours = getHoursDiff(clockIn, clockOut);
+          const checkInStatus = getCheckInStatus(att.shift, clockIn);
+          const checkOutStatus = getCheckOutStatus(att.shift, clockOut);
+          
+          let finalStatus = 'Hợp lệ';
+          if (checkInStatus === 'Đi muộn') finalStatus = 'Đi muộn';
+          else if (checkOutStatus === 'Về sớm') finalStatus = 'Về sớm';
+          
+          await query(`
+            UPDATE attendance 
+            SET clock_in = $1, clock_out = $2, actual_hours = $3, status = $4
+            WHERE employee_id = $5 AND date = $6
+          `, [clockIn, clockOut, actualHours, finalStatus, reqObj.employee_id, reqObj.from_date]);
+        } else {
+          // No record exists, insert a new one
+          let clockIn = isCheckOut ? '-' : corrTime;
+          let clockOut = isCheckOut ? corrTime : '-';
+          const actualHours = getHoursDiff(clockIn, clockOut);
+          const checkInStatus = getCheckInStatus(defaultShift, clockIn);
+          const checkOutStatus = getCheckOutStatus(defaultShift, clockOut);
+          
+          let finalStatus = 'Hợp lệ';
+          if (checkInStatus === 'Đi muộn') finalStatus = 'Đi muộn';
+          else if (checkOutStatus === 'Về sớm') finalStatus = 'Về sớm';
+          
+          await query(`
+            INSERT INTO attendance (employee_id, date, shift, clock_in, clock_out, actual_hours, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `, [reqObj.employee_id, reqObj.from_date, defaultShift, clockIn, clockOut, actualHours, finalStatus]);
+        }
       } else if (reqObj.type.includes('nghỉ phép')) {
         let currentDate = new Date(reqObj.from_date);
         const endDate = new Date(reqObj.to_date);
@@ -171,7 +234,7 @@ export const handleApproveReject = async (req, res) => {
           `, [
             reqObj.employee_id,
             dateStr,
-            'Ca hành chính (08:00 - 17:30)',
+            'Ca Gãy (09:00 - 18:00)',
             '-',
             '-',
             0,

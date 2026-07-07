@@ -4,11 +4,11 @@ import { Clock, CheckCircle2, AlertTriangle, Play, Square, Award, Calendar, Aler
 import confetti from 'canvas-confetti';
 
 const shifts = [
-  { id: 'morning', name: 'Ca Sáng (08:00 - 12:00)', startHour: 8, endHour: 12 },
-  { id: 'afternoon', name: 'Ca Chiều (13:30 - 17:30)', startHour: 13.5, endHour: 17.5 },
-  { id: 'split', name: 'Ca Gãy (08:00 - 17:30)', startHour: 8, endHour: 17.5 },
-  { id: 'ot', name: 'Tăng ca (18:00 - 21:00)', startHour: 18, endHour: 21 },
-  { id: 'online', name: 'Ca Online (Làm việc từ xa)', startHour: 8, endHour: 17.5 }
+  { id: 'morning', name: 'Ca Sáng (09:00 - 13:00)', startHour: 9, endHour: 13 },
+  { id: 'afternoon', name: 'Ca Chiều (14:00 - 18:00)', startHour: 14, endHour: 18 },
+  { id: 'split', name: 'Ca Gãy (09:00 - 18:00)', startHour: 9, endHour: 18 },
+  { id: 'ot', name: 'Tăng ca (18:30 - 21:30)', startHour: 18.5, endHour: 21.5 },
+  { id: 'online', name: 'Ca Online (Làm việc từ xa)', startHour: 9, endHour: 18 }
 ];
 
 export default function Dashboard() {
@@ -142,13 +142,13 @@ export default function Dashboard() {
       const mins = now.getMinutes();
       const currentDecimalTime = hr + mins / 60;
 
-      let recommendedShift = shifts[0].name; // Default morning
-      if (currentDecimalTime >= 6 && currentDecimalTime < 12) {
-        recommendedShift = 'Ca Sáng (08:00 - 12:00)';
-      } else if (currentDecimalTime >= 12 && currentDecimalTime < 17.5) {
-        recommendedShift = 'Ca Chiều (13:30 - 17:30)';
-      } else if (currentDecimalTime >= 17.5 && currentDecimalTime < 24) {
-        recommendedShift = 'Tăng ca (18:00 - 21:00)';
+      let recommendedShift = 'Ca Sáng (09:00 - 13:00)'; // Default morning
+      if (currentDecimalTime >= 6 && currentDecimalTime < 13) {
+        recommendedShift = 'Ca Sáng (09:00 - 13:00)';
+      } else if (currentDecimalTime >= 13 && currentDecimalTime < 18) {
+        recommendedShift = 'Ca Chiều (14:00 - 18:00)';
+      } else if (currentDecimalTime >= 18 && currentDecimalTime < 24) {
+        recommendedShift = 'Tăng ca (18:30 - 21:30)';
       }
       
       setCurrentShift(recommendedShift);
@@ -255,7 +255,7 @@ export default function Dashboard() {
 
   // Determine if it is overtime based on simulated hours
   const isOvertimePeriod = () => {
-    return time.getHours() >= 18;
+    return (time.getHours() + time.getMinutes() / 60) >= 18.5;
   };
 
   const handleSaveProfile = async (e) => {
