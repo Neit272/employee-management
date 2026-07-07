@@ -168,11 +168,11 @@ export default function MainLayout({ children }) {
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         
         {/* Navbar */}
-        <header className="h-20 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-6 z-20">
-          <div className="flex items-center gap-4">
+        <header className="h-20 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 z-20">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden text-slate-400 hover:text-slate-200 focus:outline-none"
+              className="md:hidden text-slate-400 hover:text-slate-200 focus:outline-none shrink-0"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -180,25 +180,25 @@ export default function MainLayout({ children }) {
             {!isSidebarOpen && (
               <button 
                 onClick={() => setIsSidebarOpen(true)}
-                className="hidden md:flex text-slate-450 hover:text-slate-200 focus:outline-none p-2 bg-slate-950 border border-slate-800 rounded-xl hover:border-slate-700 transition"
+                className="hidden md:flex text-slate-455 hover:text-slate-200 focus:outline-none p-2 bg-slate-950 border border-slate-800 rounded-xl hover:border-slate-700 transition shrink-0"
                 title="Hiện thanh menu"
               >
                 <Menu className="w-4 h-4" />
               </button>
             )}
-            <h2 className="text-lg font-bold text-slate-200 capitalize">
+            <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-200 capitalize whitespace-nowrap truncate">
               {menuItems.find((item) => item.path === currentPath)?.name || 'Hệ thống'}
             </h2>
           </div>
 
           {/* Right Header Controls */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             
             {/* Environment Status Badges */}
-            <div className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 rounded-full py-1.5 px-3">
+            <div className="flex items-center gap-1 sm:gap-2 bg-slate-950/80 border border-slate-800 rounded-full py-1 px-1.5 sm:py-1.5 sm:px-3">
               {/* WiFi Status */}
               <div 
-                className={`flex items-center gap-1.5 cursor-pointer text-xs font-semibold py-0.5 px-2 rounded-full ${
+                className={`flex items-center gap-1 cursor-pointer text-[10px] sm:text-xs font-semibold py-0.5 px-1.5 sm:px-2 rounded-full ${
                   officeWifi 
                     ? 'text-emerald-400 bg-emerald-500/10' 
                     : 'text-rose-400 bg-rose-500/10'
@@ -218,7 +218,7 @@ export default function MainLayout({ children }) {
 
               {/* GPS Status */}
               <div 
-                className={`flex items-center gap-1.5 cursor-pointer text-xs font-semibold py-0.5 px-2 rounded-full ${
+                className={`flex items-center gap-1 cursor-pointer text-[10px] sm:text-xs font-semibold py-0.5 px-1.5 sm:px-2 rounded-full ${
                   gpsWithinRange 
                     ? 'text-emerald-400 bg-emerald-500/10' 
                     : 'text-rose-400 bg-rose-500/10'
@@ -240,21 +240,21 @@ export default function MainLayout({ children }) {
             {/* Theme Toggle (Light/Dark) */}
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
+              className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
               title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
             >
-              {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-5 h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
+              {theme === 'dark' ? <Sun className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-12 duration-300" /> : <Moon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-indigo-400 animate-in spin-in-12 duration-300" />}
             </button>
 
             {/* Notification Bell */}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none"
+                className="relative p-1.5 sm:p-2 text-slate-400 hover:text-slate-200 bg-slate-855 border border-slate-800 rounded-xl transition focus:outline-none flex items-center justify-center"
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                 {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center text-[10px] font-black text-slate-100 animate-pulse">
+                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-rose-500 rounded-full flex items-center justify-center text-[9px] font-black text-slate-100 animate-pulse">
                     {notifications.filter(n => !n.read).length}
                   </span>
                 )}
