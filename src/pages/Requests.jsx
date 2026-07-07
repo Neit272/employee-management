@@ -184,14 +184,14 @@ export default function Requests() {
     <div className="space-y-6">
       
       {/* Upper header */}
-      <div className="flex justify-between items-center bg-slate-900/40 border border-slate-800 rounded-3xl p-6 shadow-xl">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 shadow-xl">
         <div>
           <h1 className="text-xl font-bold text-slate-100">Đơn từ của bạn</h1>
           <p className="text-slate-400 text-sm mt-1">Gửi và theo dõi tiến trình phê duyệt các đơn xin nghỉ phép, chấm công bù hoặc tăng ca.</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-4 py-3 rounded-xl shadow-lg shadow-teal-500/10 flex items-center gap-2 transition duration-200"
+          className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-bold px-4 py-3 rounded-xl shadow-lg shadow-teal-500/10 flex items-center justify-center gap-2 transition duration-200 shrink-0"
         >
           <Plus className="w-5 h-5" />
           Tạo đơn mới
@@ -205,7 +205,7 @@ export default function Requests() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full text-left text-sm border-collapse hidden md:table">
             <thead>
               <tr className="bg-slate-950/40 text-slate-400 font-semibold border-b border-slate-800">
                 <th className="px-6 py-4">Mã Đơn</th>
@@ -249,6 +249,58 @@ export default function Requests() {
               )}
             </tbody>
           </table>
+
+          {/* Mobile View: Card List */}
+          <div className="block md:hidden divide-y divide-slate-850/80">
+            {myRequests.length === 0 ? (
+              <div className="px-6 py-12 text-center text-slate-500 italic">
+                Bạn chưa gửi bất kỳ yêu cầu nào.
+              </div>
+            ) : (
+              myRequests.map((req) => (
+                <div key={req.id} className="p-5 space-y-3 hover:bg-slate-900/10 transition duration-150">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-500">Mã Đơn</span>
+                      <span className="text-xs font-bold text-slate-400 block">#REQ{req.id.toString().slice(-4)}</span>
+                    </div>
+                    {getStatusBadge(req.status)}
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-500 block">Loại đơn</span>
+                    <span className="text-sm font-bold text-slate-200">{req.type}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">Thời gian</span>
+                      <span className="text-slate-350 font-medium leading-relaxed">
+                        {req.fromDate === req.toDate ? formatDate(req.fromDate) : `${formatDate(req.fromDate)} → ${formatDate(req.toDate)}`}
+                      </span>
+                    </div>
+                    {req.correctedTime && (
+                      <div>
+                        <span className="text-slate-500 block mb-0.5">Giờ điều chỉnh</span>
+                        <span className="text-slate-300 font-bold font-mono">{req.correctedTime}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="text-xs">
+                    <span className="text-slate-500 block mb-0.5">Lý do</span>
+                    <p className="text-slate-350 leading-relaxed break-words">{req.reason}</p>
+                    {req.attachment && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-teal-400 mt-2">
+                        <FileDown className="w-3.5 h-3.5" />
+                        {req.attachment.name} ({req.attachment.size})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
@@ -324,7 +376,7 @@ export default function Requests() {
               )}
 
               {/* Date Ranges */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* From Date */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-400">Từ ngày *</label>

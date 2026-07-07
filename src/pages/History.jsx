@@ -296,7 +296,7 @@ export default function History() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full text-left text-sm border-collapse hidden md:table">
             <thead>
               <tr className="bg-slate-950/40 text-slate-400 font-semibold border-b border-slate-800">
                 <th className="px-6 py-4">Ngày</th>
@@ -332,6 +332,48 @@ export default function History() {
               )}
             </tbody>
           </table>
+
+          {/* Mobile View: Card List */}
+          <div className="block md:hidden divide-y divide-slate-850/80">
+            {filteredLogs.length === 0 ? (
+              <div className="px-6 py-12 text-center text-slate-500 italic">
+                Không tìm thấy dữ liệu chấm công cho khoảng thời gian này.
+              </div>
+            ) : (
+              filteredLogs.map((log) => (
+                <div key={log.id} className="p-5 space-y-3 hover:bg-slate-900/10 transition duration-150">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-500">Ngày</span>
+                      <span className="text-sm font-bold text-slate-300 block">{formatDate(log.date)}</span>
+                    </div>
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusClasses(log.status)}`}>
+                      {log.status}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">Ca làm việc</span>
+                      <span className="text-slate-300 font-medium">{log.shift}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">Số giờ làm việc</span>
+                      <span className="text-slate-200 font-bold">{log.actualHours}h</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">Giờ vào (In)</span>
+                      <span className="text-slate-300 font-mono">{log.clockIn}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">Giờ ra (Out)</span>
+                      <span className="text-slate-300 font-mono">{log.clockOut}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
